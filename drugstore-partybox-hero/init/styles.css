@@ -1,0 +1,220 @@
+/* NORMALIZE */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  appearance: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+/* NORMALIZE */
+
+body {
+  background: #121212;
+  color: #F1F1F1;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* колесо не має скролити сторінку — весь wheel іде в обертання */
+html:has(.pack-hero),
+body:has(.pack-hero) {
+    overflow: hidden;
+}
+
+/* ------------------------------------------------------------------
+   SCENE
+   --size / --size-mobile / --perspective виставляє script.js з CONFIG
+   ------------------------------------------------------------------ */
+.pack-hero {
+    --media-size: var(--size, 24vw);
+    height: 100dvh;
+    perspective: var(--perspective, 400vw);
+    overflow: hidden;
+    touch-action: none;
+}
+.pack-hero .container {
+    width: 100%;
+    height: 100%;
+    transform-style: preserve-3d;
+}
+.pack-hero .auto-rotation {
+    width: 100%;
+    height: 100%;
+    transform-style: preserve-3d;
+}
+.pack-hero .wheel-rotation {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transform-style: preserve-3d;
+}
+
+/* один слот = одна позиція по колу (rotationY у script.js) */
+.pack-hero .slot {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    transform-style: preserve-3d;
+    pointer-events: none;
+}
+
+/* дві сторони одного паку: front видно спереду, back — коли слот повернувся спиною */
+.pack-hero .media {
+    /* обидві сторони — в одну комірку grid, щоб лежали одна на одній */
+    grid-area: 1 / 1;
+    width: var(--media-size);
+    height: var(--media-size);
+    transform-style: preserve-3d;
+    will-change: transform;
+}
+
+/* ОБ'ЄМ 1: пак нарізаний на вертикальні смуги, розставлені по дузі циліндра.
+   Ширина / фон / позиція кожної смуги рахуються в script.js. */
+.pack-hero .surface {
+    position: absolute;
+    inset: 0;
+    transform-style: preserve-3d;
+}
+.pack-hero .strip {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    backface-visibility: hidden;
+}
+/* Фон живе в ::before, а не на самій смузі: друга стулка складки дзеркальна,
+   а scaleX(-1) на самій смузі перевернув би їй backface і вона зникла б
+   з лицьового боку. ::before — плоский нащадок, на 3D не впливає. */
+.pack-hero .strip::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: var(--pack);
+    background-repeat: no-repeat;
+    background-size: var(--bg-size);
+    background-position: var(--bg-pos);
+}
+.pack-hero .media.mirror .strip::before {
+    transform: scaleX(-1);
+}
+
+/* ОБ'ЄМ 2: відблиск по силуету паку, їде вбік разом з обертанням */
+.pack-hero .gloss {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    backface-visibility: hidden;
+    background-repeat: no-repeat;
+    background-size: 260% 100%;
+    background-position: 50% 0;
+    background-image: linear-gradient(100deg,
+        rgba(0, 0, 0, .50) 0%,
+        rgba(0, 0, 0, .22) 20%,
+        rgba(255, 255, 255, .06) 36%,
+        rgba(255, 255, 255, .30) 47%,
+        rgba(255, 255, 255, .06) 58%,
+        rgba(0, 0, 0, .24) 76%,
+        rgba(0, 0, 0, .50) 100%);
+    -webkit-mask-image: var(--pack);
+    mask-image: var(--pack);
+    -webkit-mask-size: 100% 100%;
+    mask-size: 100% 100%;
+}
+
+@media (max-width: 768px) {
+    .pack-hero {
+        --media-size: var(--size-mobile, 46vw);
+    }
+}
+
+/* ------------------------------------------------------------------
+   TUNE PANEL — тільки для підбору значень, вимикається CONFIG.panel
+   ------------------------------------------------------------------ */
+.tune {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 10;
+    width: 268px;
+    max-height: calc(100dvh - 32px);
+    overflow-y: auto;
+    padding: 14px;
+    border-radius: 10px;
+    border: 1px solid #2a2a2a;
+    background: rgba(18, 18, 18, .92);
+    backdrop-filter: blur(8px);
+    font-size: 11px;
+    line-height: 1.4;
+}
+.tune[hidden] { display: none; }
+.tune h2 {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: #8a8a8a;
+    margin-bottom: 10px;
+}
+.tune .row { margin-bottom: 9px; }
+.tune .row label {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    color: #b9b9b9;
+    margin-bottom: 3px;
+}
+.tune .row label b {
+    color: #F1F1F1;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+.tune input[type="range"] {
+    width: 100%;
+    height: 3px;
+    background: #333;
+    border-radius: 2px;
+    cursor: pointer;
+}
+.tune input[type="range"]::-webkit-slider-thumb {
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #F1F1F1;
+    cursor: pointer;
+}
+.tune .actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 12px;
+}
+.tune button {
+    flex: 1;
+    padding: 7px 8px;
+    border: 1px solid #333;
+    border-radius: 6px;
+    background: #1e1e1e;
+    color: #F1F1F1;
+    font: inherit;
+    cursor: pointer;
+}
+.tune button:hover { background: #292929; border-color: #444; }
+.tune .hint {
+    margin-top: 10px;
+    color: #6d6d6d;
+    font-size: 10px;
+}
+.tune textarea {
+    width: 100%;
+    height: 150px;
+    margin-top: 8px;
+    padding: 8px;
+    border: 1px solid #333;
+    border-radius: 6px;
+    background: #0d0d0d;
+    color: #cfcfcf;
+    font: inherit;
+    resize: vertical;
+}
+.tune textarea[hidden] { display: none; }

@@ -1,0 +1,70 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@500;800&display=swap');
+
+/* NORMALIZE */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    appearance: none;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+/* NORMALIZE */
+
+body {
+    background: #121212;
+    color: #F1F1F1;
+    font-family: 'Inter', sans-serif;
+    font-size: 22px;
+}
+.mwg_effect113 {
+    position: relative;
+    height: 100vh;
+    overflow: hidden;
+    display: grid;
+    place-items: center;
+}
+.mwg_effect113 .text {
+    font-size: 20vw;
+    text-align: center;
+    color: #323232;
+    letter-spacing: -0.03em;
+}
+.mwg_effect113 .medias {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1px;
+    height: 1px;
+    pointer-events: none;
+    visibility: hidden;
+}
+.mwg_effect113 .media {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+    pointer-events: none;
+    will-change: transform;
+}
+.mwg_effect113 .media img {
+    width: 12vw;
+    height: auto;
+    display: block;
+    pointer-events: none;
+    border-radius: 0.3vw;
+}
+.mwg_effect113 .media img.landscape {
+    width: auto;
+    height: 12vw;
+}
+
+@media (max-width: 768px) {
+    .mwg_effect113 .media img {
+        width: 24vw;
+        border-radius: 0.6vw;
+    }
+    .mwg_effect113 .media img.landscape {
+        height: 24vw;
+    }
+}
