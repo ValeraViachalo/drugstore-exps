@@ -14,7 +14,9 @@ window.addEventListener("DOMContentLoaded", () => {
     const api = window.aboutScene
     if (!api) return
 
-    const STORE_KEY = "drugstore-about-config"
+    // Bumped when scroll.js was synced with the frontend, so an older session's tweaks
+    // can't come back up over the numbers the frontend actually ships.
+    const STORE_KEY = "drugstore-about-config-v2"
 
     // path            where the value lives. "layout." resolves against whichever layout is in
     //                 force right now, so the same row edits desktop or mobile as you resize.

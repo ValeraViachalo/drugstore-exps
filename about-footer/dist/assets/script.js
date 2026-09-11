@@ -8,6 +8,9 @@ const IMAGES = [
     'assets/v-7.png', 'assets/v-8.png', 'assets/v-9.png'
 ]
 
+// Mirrors DEFAULTS in drugstore-frontend (src/components/AboutPage/AboutFooter), so a tweak
+// made here means the same thing once it is carried over. shuffle, objectFit, logoInSphere
+// and autoRotate exist only for the panel — the component has them fixed.
 const DEFAULT_CONFIG = {
     // sphere
     radiusFactor: 0.18,
@@ -20,12 +23,15 @@ const DEFAULT_CONFIG = {
     mediaSize: 15,
     objectFit: 'contain',
     depthOpacity: 0.35,
-    depthBlur: 0,
-    backdropBlur: 12,        // blur behind each photo, masked to the photo's own shape
-    // acceleration — input never steers, it only adds speed along the fixed direction
+    depthBlur: 4.5,          // px of blur at the very back, easing to 0 at the front
+    backdropBlur: 35,        // blur behind each photo, masked to the photo's own shape
+    // acceleration — input steers along ONE axis, the drift's own: with the tumble it adds
+    // speed, against it the sphere slows and, past the base rate, turns over. It always
+    // coasts back to the drift.
     scrollBoost: 0.02,       // page scroll near the section
     wheelBoost: 0.03,        // horizontal wheel / trackpad
-    dragBoost: 0.05,         // pointer or touch drag
+    dragBoost: 0.1,          // mouse / trackpad drag
+    touchDragBoost: 0.4,     // finger drag — a touch delta covers more ground per frame
     boostMax: 1.6,           // ceiling in deg/frame, so a fast flick can't fling the sphere
     boostDecay: 0.94,        // per-frame fade once the input stops
     // logo
@@ -35,12 +41,15 @@ const DEFAULT_CONFIG = {
     // Breathing the horizontal rate keeps tilting the axis so every media comes round.
     autoRotate: true,
     xPeriod: 30,             // seconds for one full turn about the X axis
-    autoRotateRight: -0.06,  // base horizontal rate; + drifts right, - drifts left
+    autoRotateRight: 0.06,   // base horizontal rate; + drifts right, - drifts left
     driftSweep: 0.04,        // how far that rate swings over the cycle (keep < |base| to stay one-way)
-    // mobile (<= 768px) overrides
-    mobileRadiusFactor: 0.28,
+    // mobile (<= 768px) overrides. Stretch has its own slot, so tuning the portrait sphere
+    // no longer drags the desktop one with it — narrower than tall, the mirror of desktop.
+    mobileRadiusFactor: 0.15,
     mobilePerspective: 170,
-    mobileMediaSize: 24
+    mobileMediaSize: 22.5,
+    mobileStretchX: 0.85,
+    mobileStretchY: 1
 }
 
 const SCHEMA = [
@@ -70,7 +79,8 @@ const SCHEMA = [
         fields: [
             { key: 'scrollBoost', label: 'Page scroll', type: 'range', min: 0, max: 0.2, step: 0.005 },
             { key: 'wheelBoost', label: 'Horizontal wheel', type: 'range', min: 0, max: 0.3, step: 0.005 },
-            { key: 'dragBoost', label: 'Drag', type: 'range', min: 0, max: 0.4, step: 0.005 },
+            { key: 'dragBoost', label: 'Drag (mouse)', type: 'range', min: 0, max: 0.4, step: 0.005 },
+            { key: 'touchDragBoost', label: 'Drag (touch)', type: 'range', min: 0, max: 1, step: 0.01 },
             { key: 'boostMax', label: 'Ceiling (\u00b0/frame)', type: 'range', min: 0.1, max: 6, step: 0.1 },
             { key: 'boostDecay', label: 'Decay', type: 'range', min: 0.8, max: 0.995, step: 0.005 }
         ]
@@ -95,7 +105,9 @@ const SCHEMA = [
         fields: [
             { key: 'mobileMediaSize', label: 'Media size (vw)', type: 'range', min: 4, max: 40, step: 0.5 },
             { key: 'mobileRadiusFactor', label: 'Radius \u00d7 width', type: 'range', min: 0.05, max: 0.9, step: 0.01 },
-            { key: 'mobilePerspective', label: 'Perspective (vw)', type: 'range', min: 20, max: 250, step: 1 }
+            { key: 'mobilePerspective', label: 'Perspective (vw)', type: 'range', min: 20, max: 250, step: 1 },
+            { key: 'mobileStretchX', label: 'Stretch ↔ width', type: 'range', min: 0.5, max: 3, step: 0.05 },
+            { key: 'mobileStretchY', label: 'Stretch ↕ height', type: 'range', min: 0.5, max: 3, step: 0.05 }
         ]
     }
 ]
@@ -103,7 +115,9 @@ const SCHEMA = [
 // mask-size has to track object-fit so the blur lands exactly under the artwork
 const MASK_SIZE = { contain: 'contain', cover: 'cover', fill: '100% 100%', 'scale-down': 'contain' }
 
-const STORAGE_KEY = 'sphere-effect-config'
+// bumped when the defaults were synced from the frontend, so an older session's tweaks
+// can't come back up over them
+const STORAGE_KEY = 'sphere-effect-config-v2'
 
 window.addEventListener('DOMContentLoaded', () => {
 
@@ -116,6 +130,8 @@ window.addEventListener('DOMContentLoaded', () => {
     const config = loadConfig()
 
     let medias = []
+    let arts = []       // the image inside each media — where the depth cues are written
+    let zOrder = []     // paint order each media was last given within its plane
     let positions = []
     let radius = 0, radiusX = 0, radiusY = 0
 
@@ -157,6 +173,8 @@ window.addEventListener('DOMContentLoaded', () => {
         })
         sphereBack.appendChild(frag)
         medias = Array.from(sphereBack.querySelectorAll('.media'))
+        arts = medias.map((media) => media.querySelector('.media__img'))
+        zOrder = medias.map(() => -1)
 
         // Initial positions on the sphere (Fibonacci spiral)
         positions = medias.map((media, index) => {
@@ -178,14 +196,16 @@ window.addEventListener('DOMContentLoaded', () => {
         const size = mobile ? config.mobileMediaSize : config.mediaSize
         const factor = mobile ? config.mobileRadiusFactor : config.radiusFactor
         const persp = mobile ? config.mobilePerspective : config.perspective
+        const spreadX = mobile ? config.mobileStretchX : config.stretchX
+        const spreadY = mobile ? config.mobileStretchY : config.stretchY
 
         root.style.setProperty('--media-size', size + 'vw')
         root.style.setProperty('--media-fit', config.objectFit)
         root.style.setProperty('--mask-size', MASK_SIZE[config.objectFit] || 'contain')
         root.style.setProperty('--backdrop-blur', config.backdropBlur + 'px')
         radius = factor * window.innerWidth + config.radiusOffset
-        radiusX = radius * config.stretchX
-        radiusY = radius * config.stretchY
+        radiusX = radius * spreadX
+        radiusY = radius * spreadY
         gsap.set([sphereBack, sphereFront], { perspective: persp + 'vw' })
     }
 
@@ -209,7 +229,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
     const auto = { x: 0, y: 0 }     // the only thing that turns the sphere
 
-    let boost = 0                   // extra deg/frame along the fixed direction
+    let boost = 0                   // deg/frame along the drift's direction, ± the base rate
 
     /**
      * The drift at time `t`: a steady turn about the X axis, plus a horizontal rate
@@ -225,13 +245,26 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * Input only ever adds speed: the gesture's magnitude is used, never its
-     * direction, so dragging or scrolling either way spins the sphere faster along
-     * the one direction it already turns in, then it coasts back down.
+     * Where the sphere is heading ON SCREEN right now, as a unit vector, screen y growing
+     * downward. Refreshed every frame by the ticker; seeded here so a drag before the
+     * first tick still reads the right way.
+     */
+    const travel = { x: 0, y: 0 }
+    function aimTravel(spin) {
+        const len = Math.hypot(spin.right, spin.up) || 1
+        travel.x = spin.right / len
+        travel.y = -spin.up / len
+    }
+    aimTravel(spinAt(0))
+
+    /**
+     * Signed, and that sign is the whole point: going WITH the sphere adds speed, going
+     * against it slows the drift and — past the base rate — flips the tumble from
+     * bottom-up to top-down. It coasts back to the drift on its own, so the reversal
+     * lasts only as long as the gesture.
      */
     function accelerate(amount, gain) {
-        boost += Math.abs(amount) * gain
-        boost = Math.min(boost, config.boostMax)   // never negative, so it cannot reverse
+        boost = Math.max(-config.boostMax, Math.min(boost + amount * gain, config.boostMax))
     }
 
     let prevX = 0, prevY = 0
@@ -267,10 +300,24 @@ window.addEventListener('DOMContentLoaded', () => {
             const plane = (config.logoInSphere && z > 0) ? sphereFront : sphereBack
             if (media.parentElement !== plane) plane.appendChild(media)
 
-            // depth cues: z is -1 (back) → 1 (front)
+            // A plane is flat, so within it paint order is the only depth cue left, and it
+            // has to track z: a media that has just come round is the FARTHEST of its plane,
+            // not the topmost it would be as the last child appended — and that happens at
+            // the rim, where they overlap most, so it read as a jump. Quantised, and written
+            // only on a change, so layers are not re-sorted every frame.
+            const order = Math.round((z + 1) * 250)
+            if (zOrder[i] !== order) {
+                zOrder[i] = order
+                media.style.zIndex = order
+            }
+
+            // depth cues: z is -1 (back) → 1 (front). Written to the image, never the media:
+            // opacity or filter on the media makes it the backdrop root, and the masked blur
+            // behind the photo would sample nothing.
             const depth = (z + 1) / 2
-            media.style.opacity = 1 - config.depthOpacity * (1 - depth)
-            media.style.filter = config.depthBlur
+            const art = arts[i]
+            art.style.opacity = 1 - config.depthOpacity * (1 - depth)
+            art.style.filter = config.depthBlur
                 ? `blur(${(config.depthBlur * (1 - depth)).toFixed(2)}px)`
                 : ''
         }
@@ -290,7 +337,13 @@ window.addEventListener('DOMContentLoaded', () => {
             accelerate(e.deltaX, config.wheelBoost)
         },
         onDrag: (e) => {
-            accelerate(Math.hypot(e.deltaX, e.deltaY), config.dragBoost * (isTouch ? 4 : 1))
+            // a drag pushes the sphere, so it is the gesture projected onto the direction of
+            // travel: with the tumble it speeds up, against it the medias turn round and
+            // follow the finger back
+            accelerate(
+                e.deltaX * travel.x + e.deltaY * travel.y,
+                isTouch ? config.touchDragBoost : config.dragBoost
+            )
         }
     })
 
@@ -311,7 +364,8 @@ window.addEventListener('DOMContentLoaded', () => {
         const y = window.scrollY
         const dy = y - lastScrollY
         lastScrollY = y
-        // either direction of scroll speeds it up; only the pace matters
+        // scrolling DOWN carries content up, the way the sphere already tumbles, so it adds
+        // speed — and scrolling back up turns it over
         accelerate(dy, config.scrollBoost * proximity())
     }, { passive: true })
 
@@ -330,6 +384,7 @@ window.addEventListener('DOMContentLoaded', () => {
         const baseUp = config.autoRotate ? spin.up : 0
         auto.y += (baseRight + (spin.right / len) * boost) * f
         auto.x -= (baseUp + (spin.up / len) * boost) * f
+        aimTravel(spin)
 
         updateMedias()
     })

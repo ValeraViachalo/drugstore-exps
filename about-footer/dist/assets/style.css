@@ -109,7 +109,8 @@ body:has(.sphere-effect) {
     margin-top: calc(var(--media-size, 10vw) / -2);
     /* no border-radius — medias carry their own shape */
     border-radius: 0;
-    will-change: transform, opacity;
+    /* transform only — will-change: opacity would make the media the backdrop root */
+    will-change: transform;
     user-select: none;
     -webkit-user-select: none;
     -moz-user-select: none;
@@ -125,6 +126,7 @@ body:has(.sphere-effect) {
     height: 100%;
     object-fit: var(--media-fit, contain);
     -webkit-user-drag: none;
+    will-change: filter, opacity;   /* the depth cues land here, not on the media */
 }
 
 /* The photos are PNGs with transparent surrounds, so a plain backdrop-filter would

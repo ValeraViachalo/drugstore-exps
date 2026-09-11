@@ -15,7 +15,8 @@ window.addEventListener("DOMContentLoaded", () => {
 
     const baseAngles = Array.from({ length: medias.length }, (_, i) => (i / medias.length) * Math.PI * 2)
 
-    // Layout switches on this width, in px. Keep it in step with the media query in scroll.css.
+    // Layout switches on this width, in px : below it is mobile, the same way the frontend's
+    // mq("mobile", "min") reads. Keep it in step with the media query in scroll.css.
     const MOBILE_BREAKPOINT = 768
 
     // Two layouts, picked by viewport width and re-picked whenever it crosses the breakpoint.
@@ -125,7 +126,7 @@ window.addEventListener("DOMContentLoaded", () => {
     let radius
 
     function pickLayout() {
-        return window.innerWidth <= MOBILE_BREAKPOINT ? MOBILE : DESKTOP
+        return window.innerWidth < MOBILE_BREAKPOINT ? MOBILE : DESKTOP
     }
 
     // Ramanujan's approximation, per unit of radius. It keeps the gap honest when ringWidth

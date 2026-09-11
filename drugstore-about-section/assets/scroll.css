@@ -87,6 +87,9 @@ body {
    500vh below is what the reveal is spread over, one group of medias at a time. */
 .drugstore_about {
   height: 500vh;
+  /* above the section that follows, so the low medias paint over it */
+  position: relative;
+  z-index: 2;
 }
 
 /* the empty screen the section scrolls out into */
@@ -103,8 +106,10 @@ body {
   position: sticky;
   top: 0;
   height: 100vh;
-  overflow: hidden;
   perspective: calc(100 * var(--u));
+  /* Open at the bottom so the low medias cross onto the next section, as they do in the
+     frontend; the sides stay shut because the ring is wider than the viewport. */
+  clip-path: inset(0 0 -50vh 0);
 }
 .drugstore_about .container {
   position: relative;
@@ -198,7 +203,7 @@ body {
 /* MOBILE — keep this breakpoint in step with MOBILE_BREAKPOINT in scroll.js.
    The ring stands up into a vertical arc there, so the medias need to be much larger
    relative to the viewport, and the headline needs the width it can get. */
-@media (max-width: 768px) {
+@media (max-width: 767.98px) {
   .drugstore_about .sticky {
     --media-size: calc(34 * var(--u));
   }
