@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Drugstore — About (scroll)</title>
+    <link rel="stylesheet" href="assets/scroll.css" />
+  </head>
+  <body>
+    <!-- 500vh of scroll track. The scene inside is sticky, so it holds the viewport
+         for the whole track while the ring fills up group by group. -->
+    <section class="drugstore_about">
+      <div class="sticky">
+        <!-- 14 slots drawn from the 9 usable medias. The five that repeat sit 5 or 6 slots
+				     apart, so no photo ever touches its twin nor faces it across the ring.
+				     Left out : image-5 and image-12 (byte for byte copies of image-1 and
+				     image-4), image-3 and image-14 (empty 300x1 files), image-9 (absent). -->
+        <div class="container">
+          <div class="about-content">
+            <svg
+              class="about-logo"
+              width="122"
+              height="100"
+              viewBox="0 0 29 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <path
+                d="M23.1533 0C26.3824 0 28.9999 2.61763 29 5.84668C29 9.07579 26.3824 11.6934 23.1533 11.6934C23.0787 11.6934 23.0046 11.6903 22.9307 11.6875C23.2255 12.5716 23.3876 13.5168 23.3877 14.5C23.3877 19.4083 19.4083 23.3877 14.5 23.3877C9.59196 23.3874 5.61328 19.4081 5.61328 14.5C5.61333 13.5172 5.77471 12.5723 6.06934 11.6885C5.99549 11.6912 5.9212 11.6943 5.84668 11.6943C2.61763 11.6943 0 9.07574 0 5.84668C0.000184813 2.61777 2.61775 8.14289e-05 5.84668 0C9.07568 0 11.6932 2.61772 11.6934 5.84668C11.6934 5.92114 11.6903 5.99555 11.6875 6.06934C12.5715 5.77452 13.5169 5.61333 14.5 5.61328C15.4827 5.61328 16.4278 5.77484 17.3115 6.06934C17.3088 5.9955 17.3066 5.92119 17.3066 5.84668C17.3067 2.61768 19.9243 8.14331e-05 23.1533 0Z"
+                fill="white"
+              />
+            </svg>
+            <!-- The highlight is scrubbed by the track, not by the heading : the heading is
+                 sticky and never moves in the viewport. "top top" is the moment the section
+                 pins, and "84% bottom" is 80% of the way through the scroll — the section is
+                 500vh and the sticky screen eats 100vh of it, so the 400vh of travel ends at
+                 100% and (100 + 0.8 * 400) / 500 = 84% of the section's height. -->
+            <h2
+              class="about-title"
+              data-highlight-text
+              data-highlight-trigger=".drugstore_about"
+              data-highlight-scroll-start="top top"
+              data-highlight-scroll-end="84% bottom"
+              data-highlight-fade="0.2"
+              data-highlight-stagger="0.1"
+            >
+              Drugstore — гостросоціальний проєкт для тих, хто горить, але не
+              згорає. Ми за безпеку, усвідомленість і свободу в усіх її проявах.
+            </h2>
+          </div>
+          <!-- Sits at the foot of the screen for the arrival only : the script fades it out
+               again over the first few percent of the scroll. -->
+          <p class="about-note">
+            Ми не пропагуємо вживання психоактивних речовин — це не може бути
+            абсолютно безпечним. Найбезпечніше — ніколи їх не вживати.
+          </p>
+          <div class="medias">
+            <img class="media" src="assets/medias/image-4.png" alt="" />
+            <img class="media" src="assets/medias/image-8.png" alt="" />
+            <img class="media" src="assets/medias/image-2.png" alt="" />
+            <img class="media" src="assets/medias/image-13.png" alt="" />
+            <img class="media" src="assets/medias/image-1.png" alt="" />
+            <img class="media" src="assets/medias/image-4.png" alt="" />
+            <img class="media" src="assets/medias/image-8.png" alt="" />
+            <img class="media" src="assets/medias/image-6.png" alt="" />
+            <img class="media" src="assets/medias/image-2.png" alt="" />
+            <img class="media" src="assets/medias/image-13.png" alt="" />
+            <img class="media" src="assets/medias/image-1.png" alt="" />
+            <img class="media" src="assets/medias/image-7.png" alt="" />
+            <img class="media" src="assets/medias/image-10.png" alt="" />
+            <img class="media" src="assets/medias/image-11.png" alt="" />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- the empty screen the section scrolls out into -->
+    <section class="drugstore_after"></section>
+
+    <!-- GSAP -->
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.15/dist/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.15/dist/ScrollTrigger.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.15/dist/SplitText.min.js"></script>
+
+    <!-- EFFECT CODE -->
+    <script src="assets/scroll.js"></script>
+    <script src="assets/highlight-text.js"></script>
+
+    <!-- TUNING PANEL — drop this one line to remove it, nothing else depends on it -->
+    <script src="assets/config-panel.js"></script>
+  </body>
+</html>

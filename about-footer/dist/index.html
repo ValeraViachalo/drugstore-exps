@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>About Footer — Sphere</title>
+	<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+	<div class="page-spacer" aria-hidden="true">
+		<p class="scroll-hint">Scroll</p>
+	</div>
+
+	<section class="sphere-effect">
+		<div class="sphere-container">
+			<!-- medias are generated from IMAGES + config.count in assets/script.js -->
+			<!-- two 3D planes with the logo sandwiched between them: medias behind the
+			     logo live in --back, those in front live in --front. Browsers won't
+			     depth-sort a plain element against 3D-transformed siblings, so the
+			     split is what puts front medias over the logo. -->
+			<div class="sphere sphere--back"></div>
+
+			<!-- static centre logo: never rotates, never eats pointer events -->
+			<img class="sphere-logo" src="assets/logo.svg" alt="" draggable="false">
+
+			<div class="sphere sphere--front"></div>
+		</div>
+	</section>
+
+	<div class="page-spacer" aria-hidden="true"></div>
+
+	<!-- CONFIG PANEL -->
+	<button class="cfg-toggle" type="button" title="Toggle config (C)" aria-label="Toggle config">⚙</button>
+
+	<aside class="cfg-panel">
+		<div class="cfg-head">
+			<span>Config</span>
+			<span>press C</span>
+		</div>
+
+		<div class="cfg-body">
+			<!-- controls are generated from SCHEMA in assets/script.js -->
+			<div class="cfg-out">
+				<h3 style="font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--panel-accent);margin-bottom:8px;">JSON</h3>
+				<textarea readonly spellcheck="false"></textarea>
+			</div>
+		</div>
+
+		<div class="cfg-foot">
+			<button type="button" data-action="copy">Copy config</button>
+			<button type="button" data-action="reset">Reset</button>
+		</div>
+	</aside>
+
+	<!-- GSAP -->
+	<script src="https://cdn.jsdelivr.net/npm/gsap@3.15/dist/gsap.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/gsap@3.15/dist/Observer.min.js"></script>
+
+	<!-- EFFECT CODE -->
+	<script src="assets/script.js"></script>
+</body>
+</html>

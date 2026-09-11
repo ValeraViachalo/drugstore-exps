@@ -1,0 +1,210 @@
+/* NORMALIZE */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  appearance: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+/* NORMALIZE */
+
+/* The display face, lifted from drugstore-frontend (src/app/fonts). */
+@font-face {
+  font-family: "TwidGrotesk";
+  src: url("fonts/TwidGrotesk-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* -----------------------------------------------------------------------------
+   Fluid scaling, ported from drugstore-frontend (src/styles/base/_scaling.scss).
+   Everything the headline is built out of is written in design pixels and run
+   through calc(px / var(--size-unit) * 1rem), so it scales with the viewport
+   exactly the way it does over there, and h2 is 32px at its own tier.
+   Thresholds are the frontend's breakpoint map : 480 / 768 / 1024.
+
+   rem, not the frontend's em. Only the root carries --size-font, so a rem is always
+   the fluid base — whereas an em is read off the element's OWN font-size the moment
+   the rule sits on something that sets one. A 14px note asking for a 390px max-width
+   in em gets 341px, and a 32px headline asking for a 28px margin gets 56px.
+   ----------------------------------------------------------------------------- */
+:root {
+  /* Mobile portrait (base) */
+  --size-unit: 16;
+  --size-container-ideal: 390;
+  --size-container-min: 320px;
+  --size-container-max: 480px;
+  --size-container: clamp(
+    var(--size-container-min),
+    100vw,
+    var(--size-container-max)
+  );
+  --size-font: calc(
+    var(--size-container) / (var(--size-container-ideal) / var(--size-unit))
+  );
+}
+
+html {
+  font-size: var(--size-font);
+}
+
+/* Mobile landscape and up */
+@media screen and (min-width: 480px) {
+  :root {
+    --size-container-ideal: 550;
+    --size-container-min: 480px;
+    --size-container-max: 768px;
+  }
+}
+
+/* Tablet and up */
+@media screen and (min-width: 768px) {
+  :root {
+    --size-container-ideal: 834;
+    --size-container-min: 768px;
+    --size-container-max: 1024px;
+  }
+}
+
+/* Desktop and up */
+@media screen and (min-width: 1024px) {
+  :root {
+    --size-container-ideal: 1440;
+    --size-container-min: 1024px;
+    --size-container-max: 1920px;
+  }
+}
+
+body {
+  background: #000;
+  color: #fff;
+  /* the page scrolls here : the ring is driven by that scroll, not by wheel events */
+}
+
+/* The scroll track. Its only job is to be long : the scene inside is sticky, so the
+   500vh below is what the reveal is spread over, one group of medias at a time. */
+.drugstore_about {
+  height: 500vh;
+}
+
+/* the empty screen the section scrolls out into */
+.drugstore_after {
+  height: 100vh;
+}
+
+.drugstore_about .sticky {
+  /* One scene unit drives the whole camera : perspective, depth, ring radius and media size.
+       The breakpoint below is the same 768px the script switches its layout on. */
+  --u: 1vw;
+  --media-size: calc(16 * var(--u));
+
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: hidden;
+  perspective: calc(100 * var(--u));
+}
+.drugstore_about .container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+}
+.drugstore_about .medias {
+  z-index: 2;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+}
+.drugstore_about .media {
+  position: absolute;
+  top: calc(50% - var(--media-size) / 2);
+  left: calc(50% - var(--media-size) / 2);
+  width: var(--media-size);
+  height: var(--media-size);
+  object-fit: contain;
+  /* the script owns the opacity from here on : it multiplies each media's own scroll
+       reveal by the depth fade, so a media that has not been reached stays at 0 */
+  opacity: 0;
+  border-radius: 500px;
+  will-change: transform, opacity;
+  transform-style: preserve-3d;
+
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* Live text now, not outlines : the logo sits on top and the headline is centred under
+   it, the same composition the baked svg had. No z-index — the ring is at 2 and this
+   block comes before it in the markup, so the medias still pass in front of the copy. */
+.about-content {
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: calc(628 / var(--size-unit) * 1rem);
+  text-align: center;
+  /* the script fades this in, REVEAL in scroll.js owns the timing */
+  opacity: 0;
+  will-change: opacity;
+}
+
+.about-logo {
+  display: block;
+  width: calc(122 / var(--size-unit) * 1rem);
+  height: calc(100 / var(--size-unit) * 1rem);
+}
+
+/* headline-2 from drugstore-frontend (abstracts/_typography.scss) */
+.about-title {
+  margin-top: calc(28 / var(--size-unit) * 1rem);
+  font-family: "TwidGrotesk", sans-serif;
+  font-style: normal;
+  font-weight: 400;
+  font-size: calc(32 / var(--size-unit) * 1rem);
+  line-height: 1;
+  color: #fff;
+}
+
+/* The disclaimer at the foot of the screen. The script owns its opacity the whole way : it
+   fades in with the headline, sits at NOTE_OPACITY, and is gone again a few percent into the
+   scroll. The side padding is what keeps it off the edges once 390 is the whole screen. */
+.about-note {
+  position: absolute;
+  left: 50%;
+  bottom: calc(40 / var(--size-unit) * 1rem);
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: calc(390 / var(--size-unit) * 1rem);
+  padding-inline: calc(16 / var(--size-unit) * 1rem);
+  font-family: "TwidGrotesk", sans-serif;
+  font-style: normal;
+  font-weight: 400;
+  font-size: calc(14 / var(--size-unit) * 1rem);
+  line-height: 1.2;
+  text-align: center;
+  color: #fff;
+  opacity: 0;
+  will-change: opacity;
+}
+
+/* MOBILE — keep this breakpoint in step with MOBILE_BREAKPOINT in scroll.js.
+   The ring stands up into a vertical arc there, so the medias need to be much larger
+   relative to the viewport, and the headline needs the width it can get. */
+@media (max-width: 768px) {
+  .drugstore_about .sticky {
+    --media-size: calc(34 * var(--u));
+  }
+
+  .about-content {
+    top: 50%;
+    max-width: calc(336 / var(--size-unit) * 1rem);
+  }
+}

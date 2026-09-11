@@ -1,0 +1,111 @@
+/* NORMALIZE */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    appearance: none;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+/* NORMALIZE */
+
+body {
+    background: #000;
+}
+/* here to prevent scroll bumps, remove this if you want to keep the flow of the page */
+html:has(.drugstore_about),
+body:has(.drugstore_about) {
+    overflow: hidden;
+}
+
+.drugstore_about {
+    /* One scene unit drives the whole camera : perspective, depth, ring radius and media size.
+       The breakpoint below is the same 768px the script switches its layout on. */
+    --u: 1vw;
+    --media-size: calc(16 * var(--u));
+
+    height: 100vh;
+    overflow: hidden;
+    perspective: calc(100 * var(--u));
+}
+.drugstore_about .container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transform-style: preserve-3d;
+}
+.drugstore_about .medias {
+    z-index: 2;
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transform-style: preserve-3d;
+}
+.drugstore_about .media {
+    position: absolute;
+    top: calc(50% - var(--media-size) / 2);
+    left: calc(50% - var(--media-size) / 2);
+    width: var(--media-size);
+    height: var(--media-size);
+    object-fit: contain;
+    /* the medias are square with an opaque black backing : keep the inscribed bubble only,
+       otherwise the closest tiles cut black rectangles through the ones behind them.
+       closest-side puts 100% on the edge of the square, farthest-corner would eat the rim. */
+    /* -webkit-mask-image: radial-gradient(circle closest-side, #000 0 99%, transparent 100%);
+    mask-image: radial-gradient(circle closest-side, #000 0 99%, transparent 100%); */
+    /* the script owns the opacity from here on : it multiplies the reveal by the depth fade */
+    opacity: 0;
+    border-radius: 500px;
+    will-change: transform, opacity;
+    transform-style: preserve-3d;
+
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
+.about-content,
+.about-content-mobile {
+    position: absolute;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    /* the script fades these in, REVEAL in script.js owns the timing */
+    opacity: 0;
+    will-change: opacity;
+}
+
+.about-content {
+    top: 35%;
+    width: calc(628 / 1440 * 100vw);
+    height: calc(317 / 1440 * 100vw);
+}
+
+/* only one of the two is ever mounted, the breakpoint below decides which */
+.about-content-mobile {
+    display: none;
+    top: 50%;
+    width: calc(336 / 390 * 100vw);
+    height: calc(211 / 390 * 100vw);
+}
+
+.about-content svg,
+.about-content-mobile svg {
+    width: 100%;
+    height: 100%;
+}
+
+/* MOBILE — keep this breakpoint in step with MOBILE_BREAKPOINT in script.js.
+   The ring stands up into a vertical arc there, so the medias need to be much larger
+   relative to the viewport, and the headline needs the width it can get. */
+@media (max-width: 768px) {
+    .drugstore_about {
+        --media-size: calc(34 * var(--u));
+    }
+
+    .about-content {
+        display: none;
+    }
+
+    .about-content-mobile {
+        display: block;
+    }
+}
