@@ -10,12 +10,12 @@ window.addEventListener('DOMContentLoaded', async () => {
      * ---------------------------------------------------------------- */
     const CONFIG = {
         // population
-        MAX_ITEMS: 5,               // reference: 5 on desktop, 4 on mobile
+        MAX_ITEMS: 1,               // reference: 5 on desktop, 4 on mobile
         MAX_ITEMS_MOBILE: 4,
-        OVERFLOW_DELAY: 1,          // grace period before an over-the-cap sphere leaves, s
+        OVERFLOW_DELAY: 3.45,       // grace period before an over-the-cap sphere leaves, s
 
         // size — every sphere picks a random diameter in this range
-        SIZE: [8, 15],              // reference was a fixed 12vw
+        SIZE: [2, 2],               // reference was a fixed 12vw
         SIZE_MOBILE: [18, 30],
 
         // interaction — the reference's own trigger: the cursor splits whatever
@@ -25,36 +25,37 @@ window.addEventListener('DOMContentLoaded', async () => {
         // auto split — a random sphere bursts on a timer, on top of the
         // reference's cursor interaction
         AUTO_SPLIT: true,
-        AUTO_SPLIT_DELAY: 1,        // s
+        AUTO_SPLIT_DELAY: 6.7,      // s
 
-        // physics — straight from the reference body options
-        FRICTION_AIR: 0.06,
-        RESTITUTION: 0.35,
-        FRICTION: 0.2,
-        DENSITY: 0.002,
+        // physics — reference values were 0.06 / 0.35 / 0.2 / 0.002
+        FRICTION_AIR: 0.005,
+        RESTITUTION: 0,
+        FRICTION: 0,
+        DENSITY: 0.0005,
 
-        // motion
-        SPAWN_SPEED: [1.5, 2.7],    // reference: 1.5 + Math.random() * 1.2
-        SPLIT_SPEED: 1,
+        // motion — all three at zero: spheres hold wherever they appear, and
+        // split children separate only by the engine resolving their overlap
+        SPAWN_SPEED: [0, 0],        // reference: 1.5 + Math.random() * 1.2
+        SPLIT_SPEED: 0,
         ROTATE: true,               // reference tilts and spins every sphere
 
         // levitation — a slow wander so spheres never fully settle.
         // Matter multiplies an applied force by delta² (~278) before it
         // reaches velocity, which is why these numbers look so small.
-        DRIFT: 0.0001,              // strength
-        DRIFT_SPEED: 0.25,          // how fast it cycles, rad/s — lower = wider
+        DRIFT: 0,                   // strength — off
+        DRIFT_SPEED: 0.07,          // how fast it cycles, rad/s — lower = wider
 
         // transitions
-        ENTER_DURATION: 0.25,
-        EXIT_DURATION: 0.2,
+        ENTER_DURATION: 1.15,
+        EXIT_DURATION: 1.2,
     }
 
     const DEFAULTS = JSON.parse(JSON.stringify(CONFIG))
 
     // Versioned: a saved config silently overrides every key it still shares
     // with the current one. Bump when the defaults must win.
-    const STORAGE_KEY = 'cons-hero:config:v4'
-    const STALE_KEYS = ['cons-hero:config', 'cons-hero:config:v2', 'cons-hero:config:v3']
+    const STORAGE_KEY = 'cons-hero:config:v5'
+    const STALE_KEYS = ['cons-hero:config', 'cons-hero:config:v2', 'cons-hero:config:v3', 'cons-hero:config:v4']
 
     restoreConfig(CONFIG)
 
