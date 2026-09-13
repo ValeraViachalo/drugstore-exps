@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Donate Hero — Spheres</title>
+	<link rel="preload" href="assets/fonts/TwidGrotesk-Regular.woff2" as="font" type="font/woff2" crossorigin>
+	<!-- ?v= only so a plain reload can't serve a stale file while we're iterating; drop it on port -->
+	<link rel="stylesheet" href="assets/style.css?v=8">
+</head>
+<body>
+
+	<main class="page">
+		<section class="donate-hero" aria-label="Донати">
+			<!-- fixed-size stage (config.width × config.height); scaled down as a whole on narrow screens -->
+			<div class="dh-stage">
+				<h2 class="dh-title">Донати</h2>
+
+				<!-- arc centreline + band edges, only visible with "Show arc guides" -->
+				<svg class="dh-guides" aria-hidden="true"></svg>
+
+				<!-- spheres are generated from config in assets/script.js -->
+				<div class="dh-bubbles"></div>
+			</div>
+		</section>
+	</main>
+
+	<!-- CONFIG PANEL -->
+	<button class="cfg-toggle" type="button" title="Toggle config (C)" aria-label="Toggle config">⚙</button>
+
+	<aside class="cfg-panel">
+		<div class="cfg-head">
+			<span>Config</span>
+			<span>press C</span>
+		</div>
+
+		<!-- Desktop and Mobile are separate configs; the active tab is what renders live -->
+		<div class="cfg-tabs" role="tablist">
+			<button type="button" class="cfg-tab" data-device="desktop" role="tab">Desktop</button>
+			<button type="button" class="cfg-tab" data-device="mobile" role="tab">Mobile</button>
+		</div>
+		<p class="cfg-tabs-hint"></p>
+
+		<!-- saves the current tab's config into its own list at the bottom (localStorage) -->
+		<form class="cfg-save">
+			<input type="text" name="name" placeholder="Name this config…" maxlength="48" spellcheck="false" autocomplete="off">
+			<button type="submit">Save</button>
+		</form>
+
+		<div class="cfg-body">
+			<!-- controls are generated from SCHEMA in assets/script.js -->
+			<div class="cfg-out">
+				<p class="cfg-info"></p>
+				<h3>JSON</h3>
+				<textarea readonly spellcheck="false"></textarea>
+			</div>
+
+			<!-- last block of the scroll, below every control -->
+			<section class="cfg-saved">
+				<h3>Saved <span class="cfg-saved-count"></span></h3>
+				<ul class="cfg-saved-list"></ul>
+				<p class="cfg-saved-empty">Nothing saved yet — tune the section and hit Save.</p>
+			</section>
+		</div>
+
+		<div class="cfg-foot">
+			<button type="button" data-action="copy">Copy</button>
+			<button type="button" data-action="intro">Intro</button>
+			<button type="button" data-action="shuffle">Shuffle</button>
+			<button type="button" data-action="reset">Reset</button>
+		</div>
+	</aside>
+
+	<!-- EFFECT CODE -->
+	<script src="assets/script.js?v=8"></script>
+</body>
+</html>
