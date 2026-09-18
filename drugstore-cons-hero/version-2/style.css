@@ -10,7 +10,7 @@
 
 @font-face {
     font-family: "TwidGrotesk";
-    src: url("fonts/TwidGrotesk-Regular.woff2") format("woff2");
+    src: url("../assets/fonts/TwidGrotesk-Regular.woff2") format("woff2");
     font-weight: 400;
     font-style: normal;
     font-display: swap;
@@ -115,9 +115,34 @@ body {
     filter: blur(var(--intro-blur, 14px));
 }
 
-/* kept above the rest — nothing should ever paint over the main sphere */
-.ch-bubble[data-main] {
-    z-index: 2;
+/* the line a sphere carries while it is one of the biggest: a frosted pill over the middle of
+   the picture. It fades and blurs away as the sphere shrinks out of the top few */
+.ch-label {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%) scale(0.9);
+    padding: 0.45em 0.85em;
+    border-radius: 0.4em;
+    background: rgba(255, 255, 255, 0.28);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    color: #fff;
+    font-family: "TwidGrotesk", "Helvetica Neue", Arial, sans-serif;
+    font-size: var(--label-size, 16px);
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+    opacity: 0;
+    filter: blur(6px);
+    transition: opacity 0.4s ease, filter 0.4s ease, transform 0.4s ease;
+    pointer-events: none;
+}
+
+.ch-bubble.is-active .ch-label {
+    opacity: 1;
+    filter: blur(0);
+    transform: translate(-50%, -50%) scale(1);
 }
 
 .ch-bubble img {

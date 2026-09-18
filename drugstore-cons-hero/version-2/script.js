@@ -1,29 +1,40 @@
 /* =============================================================================
-   Cons hero — a cluster of large spheres laid out to the reference, alive:
-   they split, merge, swap and step aside from the cursor + live config panel.
+   Cons hero, version 2 — the reference cluster of large spheres, each with its
+   own picture. Every so often two of them trade sizes: one grows as the other
+   shrinks, and the rest make room. Nothing ever appears or leaves.
    Same bones as donate-hero: a fixed-size stage scaled as a whole, spheres
    placed with left/top, transform left to the dodge, no libraries.
    ========================================================================== */
 
-// The composition, as measured on the 2000×1139 reference: each sphere's centre and diameter.
-// It's the starting state — `life` then reshapes it — and what Reset brings back. `layout`
-// scales it by config.scale and centres the cluster at config.clusterX/Y.
+// The composition, as measured on the 2000×1139 reference: each sphere's centre, its picture —
+// no two alike — and the line it shows while it is one of the two big ones. Two changes from
+// the reference: it repeats two pictures, and those slots take photos from the wider set; and
+// it has three big spheres where this has exactly two (the left pink one is brought down, the
+// small ones up a little, so the cluster keeps its area) — plus five small fillers in its empty
+// spots, so the zone reads full. `layout` scales it by config.scale
+// and centres the cluster at config.clusterX/Y; Reset brings it back. The lines are
+// placeholders except the two the reference shows.
 const SPHERES = [
-    { src: 'assets/ic-3.png', x: 1075, y: 578, d: 350 },   // face — the anchor
-    { src: 'assets/ic-2.png', x: 808,  y: 762, d: 265 },   // pink roots, left
-    { src: 'assets/ic-5.png', x: 1248, y: 855, d: 270 },   // hand in water, right
-    { src: 'assets/ic-6.png', x: 822,  y: 458, d: 185 },   // hand hole, top left
-    { src: 'assets/ic-2.png', x: 1338, y: 522, d: 160 },   // pink roots, small right
-    { src: 'assets/ic-7.png', x: 1060, y: 922, d: 115 },   // moss, bottom
-    { src: 'assets/ic-1.png', x: 942,  y: 380, d: 110 },   // glass, top
-    { src: 'assets/ic-1.png', x: 648,  y: 543, d: 105 }    // glass, left
+    { src: '../assets/ic-3.png', x: 1075, y: 578, d: 350, label: 'Перші 4 безкоштовно' },   // face — the anchor
+    { src: '../assets/ic-2.png', x: 808,  y: 762, d: 200, label: 'Без осуду' },             // pink roots, left (was 265)
+    { src: '../assets/ic-5.png', x: 1248, y: 855, d: 280, label: 'Анонімно' },              // hand in water, right
+    { src: '../assets/ic-6.png', x: 822,  y: 458, d: 180, label: 'Онлайн-чат' },            // hand hole, top left
+    { src: '../assets/lifestyle.png', x: 1338, y: 522, d: 160, label: 'Обрати фахівця' },  // (was a second pink roots)
+    { src: '../assets/ic-7.png', x: 1060, y: 922, d: 130, label: 'Конфіденційно' },         // moss, bottom
+    { src: '../assets/ic-1.png', x: 942,  y: 380, d: 120, label: 'Типи консультацій' },     // glass, top
+    { src: '../assets/mental-health.png', x: 648, y: 543, d: 110, label: 'Додаток Free2Ask' },  // (was a second glass)
+    // fillers — not in the reference; small spheres dropped into its empty spots, pictures
+    // copied over from donate-hero (v-*). The relax settles them against the rest
+    { src: '../assets/v-13.png', x: 690,  y: 680, d: 140, label: 'Підтримка' },
+    { src: '../assets/v-1.png',  x: 1390, y: 690, d: 130, label: 'Спільнота' },
+    { src: '../assets/v-6.png',  x: 1210, y: 400, d: 120, label: 'Тестування' },
+    { src: '../assets/v-12.png', x: 900,  y: 905, d: 125, label: 'Гаряча лінія' },
+    { src: '../assets/v-3.png',  x: 1150, y: 320, d: 115, label: 'Групи' }
 ]
 
-// the images a new sphere may take — the reference uses the small glass and moss ones for its
-// small spheres and the photos for the big ones (ic-4 carries text, kept out for now)
-const IMAGES_SMALL = ['assets/ic-1.png', 'assets/ic-7.png']
-const IMAGES_LARGE = ['assets/ic-2.png', 'assets/ic-3.png', 'assets/ic-5.png', 'assets/ic-6.png', 'assets/ic-7.png']
-const SMALL_BELOW = 135     // reference px: a sphere smaller than this takes a "small" image
+// exactly this many spheres are big at any moment — they carry their line, and every trade
+// hands one of their sizes down to a small sphere
+const ACTIVE_COUNT = 2
 
 // the cluster's bounding box on the reference — its centre is what clusterX/Y place, and what
 // every relaxed layout is re-centred on, so the composition never wanders off
@@ -32,7 +43,7 @@ const CLUSTER = bounds(SPHERES)
 const DEFAULT_CONFIG = {
     // section — the stage is laid out at this size, then scaled as a whole
     width: 1190,
-    height: 720,
+    height: 760,
     fitToViewport: true,
     // the section as seen: 0 shows the whole stage (scaled down to fit if fitToViewport), any
     // width makes it a window that wide instead — the stage centred in it, the rest cropped off,
@@ -58,22 +69,23 @@ const DEFAULT_CONFIG = {
     titleSize: 108,
     titleTop: 90,
     // cluster — the reference composition at this size, its centre here on the stage
-    scale: 0.72,
+    scale: 0.68,
     clusterX: 5,              // px off the stage's centre line (the reference sits 5px right)
-    clusterY: 461,            // px from the stage's top to the cluster's centre
+    clusterY: 475,            // px from the stage's top to the cluster's centre
     gap: 8,                   // px two spheres are kept apart — by the layout and by the dodge
-    // life — every so often the cluster reshapes: a big sphere splits in two, two small ones
-    // merge into a bigger one, two swap sizes, one leaves as a new one arrives, or a photo
-    // changes. Every change keeps the total area, so the cluster stays the reference's size
-    life: true,
-    lifeMin: 2,               // s between one change and the next, at least…
-    lifeMax: 4.5,             // …and at most
-    morphDuration: 1.3,       // s a change takes to play out
-    minCount: 6,              // the cluster never merges below this many spheres…
-    maxCount: 10,             // …or splits above it
-    minSize: 90,              // reference px — no sphere ends up smaller than this…
-    maxSize: 360,             // …or bigger
-    splitMin: 200,            // only a sphere this big (reference px) may split
+    // resize — every so often the big sphere that has been big the longest hands its size to a
+    // small one: it shrinks as the other grows, and the rest shift to make room. So no sphere
+    // stays big for more than two trades. The set of sizes never changes, and the cluster is
+    // held to the reference's box, so the zone always reads equally full
+    resize: true,
+    resizeMin: 2,             // s between one trade and the next, at least…
+    resizeMax: 4,             // …and at most
+    resizeDuration: 1.1,      // s a trade takes to play out
+    resizeMinRatio: 1.3,      // the two must differ at least this much, or nothing visibly happens…
+    resizeMaxRatio: 3.5,      // …and at most this much
+    // labels — the two big spheres carry their line on a frosted pill; it fades as they shrink
+    labels: true,
+    labelSize: 16,            // px, on the stage
     // dodge — every sphere steps aside from the cursor and springs back
     dodge: true,
     dodgeReach: 102,          // px between cursor and a sphere's edge at which it starts to move
@@ -84,7 +96,7 @@ const DEFAULT_CONFIG = {
 }
 
 // Mobile takes the desktop numbers and changes only what a phone needs: a phone-wide stage, a
-// smaller composition and a shorter reach. Everything else — intro, life, dodge feel — is
+// smaller composition and a shorter reach. Everything else — intro, resize, dodge feel — is
 // shared, so a change there carries to both.
 const DEFAULT_MOBILE_CONFIG = {
     ...DEFAULT_CONFIG,
@@ -92,7 +104,7 @@ const DEFAULT_MOBILE_CONFIG = {
     height: 640,
     titleSize: 64,
     titleTop: 150,
-    scale: 0.42,
+    scale: 0.38,
     clusterX: 3,
     clusterY: 410,
     gap: 5,
@@ -143,17 +155,21 @@ const SCHEMA = [
         ]
     },
     {
-        title: 'Life',
+        title: 'Resize',
         fields: [
-            { key: 'life', label: 'Enabled', type: 'checkbox' },
-            { key: 'lifeMin', label: 'Pause, at least (s)', type: 'range', min: 0.5, max: 15, step: 0.5 },
-            { key: 'lifeMax', label: 'Pause, at most (s)', type: 'range', min: 0.5, max: 20, step: 0.5 },
-            { key: 'morphDuration', label: 'One change (s)', type: 'range', min: 0.3, max: 4, step: 0.05 },
-            { key: 'minCount', label: 'Spheres, at least', type: 'range', min: 2, max: 12, step: 1 },
-            { key: 'maxCount', label: 'Spheres, at most', type: 'range', min: 3, max: 16, step: 1 },
-            { key: 'minSize', label: 'Smallest (ref px)', type: 'range', min: 40, max: 200, step: 5 },
-            { key: 'maxSize', label: 'Biggest (ref px)', type: 'range', min: 200, max: 500, step: 5 },
-            { key: 'splitMin', label: 'Splits from (ref px)', type: 'range', min: 100, max: 400, step: 5 }
+            { key: 'resize', label: 'Enabled', type: 'checkbox' },
+            { key: 'resizeMin', label: 'Pause, at least (s)', type: 'range', min: 0.5, max: 15, step: 0.5 },
+            { key: 'resizeMax', label: 'Pause, at most (s)', type: 'range', min: 0.5, max: 20, step: 0.5 },
+            { key: 'resizeDuration', label: 'One trade (s)', type: 'range', min: 0.3, max: 5, step: 0.05 },
+            { key: 'resizeMinRatio', label: 'Sizes differ, at least (×)', type: 'range', min: 1, max: 4, step: 0.1 },
+            { key: 'resizeMaxRatio', label: 'Sizes differ, at most (×)', type: 'range', min: 1, max: 4, step: 0.1 }
+        ]
+    },
+    {
+        title: 'Labels',
+        fields: [
+            { key: 'labels', label: 'Show', type: 'checkbox' },
+            { key: 'labelSize', label: 'Size (px)', type: 'range', min: 10, max: 32, step: 1 }
         ]
     },
     {
@@ -169,8 +185,8 @@ const SCHEMA = [
     }
 ]
 
-const STORAGE_KEY = 'cons-hero-config-v1'
-const STORAGE_KEY_MOBILE = 'cons-hero-config-mobile-v1'
+const STORAGE_KEY = 'cons-hero-v2-config-v1'
+const STORAGE_KEY_MOBILE = 'cons-hero-v2-config-mobile-v1'
 
 const DEVICES = {
     desktop: { label: 'Desktop', defaults: DEFAULT_CONFIG, storageKey: STORAGE_KEY },
@@ -197,27 +213,26 @@ window.addEventListener('DOMContentLoaded', () => {
     let config = DEVICES[deviceKey].config
 
     /* ---------------------------------- state --------------------------------- */
-    // The cluster, in reference px — what `life` reshapes. Each sphere:
-    //   x, y, d      its resting centre and diameter, tweened by a morph
-    //   tween        { from, to, t0, dur } while a morph moves it, else null
-    //   leaving      shrinking away — gone once its tween ends
+    // The cluster, in reference px — what a size trade reshapes. Each sphere:
+    //   x, y, d      its resting centre and diameter, tweened by a trade
+    //   tween        { from, to, t0, dur } while a trade moves it, else null
     //   el           its element (rebuilt by render); sx, sy, sr the same in stage px
     //   ox, oy…      the dodge's offset and velocity (stage px)
 
     let spheres = []
     let nextId = 1
 
-    function sphere(src, x, y, d) {
-        return { id: nextId++, src, x, y, d, tween: null, leaving: false, el: null, img: null,
+    function sphere(src, x, y, d, label) {
+        return { id: nextId++, src, x, y, d, label, tween: null, el: null, img: null, bigSince: 0,
             sx: 0, sy: 0, sr: 0, ox: 0, oy: 0, vx: 0, vy: 0, px: 0, py: 0, pushed: false }
     }
 
     function resetSpheres() {
-        spheres = SPHERES.map((s) => sphere(s.src, s.x, s.y, s.d))
+        spheres = SPHERES.map((s) => sphere(s.src, s.x, s.y, s.d, s.label))
         // the measured reference has two spheres a hair inside the gap — settle that once here,
         // or the dodge would hold them apart forever (no pull: the composition stays as drawn)
-        const points = spheres.map((s) => ({ s, x: s.x, y: s.y, r: s.d / 2, pull: 0 }))
-        relax(points, config.gap / config.scale)
+        const points = spheres.map((s) => ({ s, x: s.x, y: s.y, r: s.d / 2 }))
+        relax(points, config.gap / config.scale, 0)
         points.forEach((p) => { p.s.x = p.x; p.s.y = p.y })
     }
 
@@ -233,12 +248,14 @@ window.addEventListener('DOMContentLoaded', () => {
         stage.style.setProperty('--title-size', config.titleSize + 'px')
         stage.style.setProperty('--title-top', config.titleTop + 'px')
 
+        stage.style.setProperty('--label-size', config.labelSize + 'px')
         const frag = document.createDocumentFragment()
         spheres.forEach((s) => {
             frag.appendChild(bubble(s))
             place(s)
         })
         bubbles.replaceChildren(frag)
+        updateActive()
         wake()
 
         fit()
@@ -253,7 +270,7 @@ window.addEventListener('DOMContentLoaded', () => {
         // the entrance waits for the section to come into view; a re-render mid-tuning doesn't
         // replay it, it only re-veils while one is still pending
         if (config.intro && introPending) veil()
-        scheduleLife()
+        scheduleResize()
     }
 
     function bubble(s) {
@@ -264,6 +281,10 @@ window.addEventListener('DOMContentLoaded', () => {
         img.alt = ''
         img.draggable = false
         el.appendChild(img)
+        const label = document.createElement('span')
+        label.className = 'ch-label'
+        label.textContent = s.label
+        el.appendChild(label)
         s.el = el
         s.img = img
         // the dodge's offset survives a re-render
@@ -282,6 +303,23 @@ window.addEventListener('DOMContentLoaded', () => {
         el.style.top = (s.sy - s.sr).toFixed(2) + 'px'
         el.style.width = el.style.height = (s.sr * 2).toFixed(2) + 'px'
         el.style.zIndex = Math.round(s.d)
+    }
+
+    /** The two biggest, by the size they are right now. */
+    function biggest() {
+        return spheres.slice().sort((a, b) => b.d - a.d).slice(0, ACTIVE_COUNT)
+    }
+
+    /** The big ones show their line, the rest hide it — and each remembers when it got big. */
+    function updateActive() {
+        const top = biggest()
+        const now = performance.now()
+        spheres.forEach((s) => {
+            const big = top.includes(s)
+            if (big && !s.el.classList.contains('is-active')) s.bigSince = now
+            s.el.classList.toggle('is-active', big && config.labels)
+            s.el.classList.toggle('is-big', big)
+        })
     }
 
     /* ---------------------------------- intro --------------------------------- */
@@ -360,7 +398,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 el.style.transitionDelay = ''
             })
             wake()
-            scheduleLife()   // life waits for the entrance
+            scheduleResize()   // trades wait for the entrance
         }, mainDelay + Math.round(fade * hold) + 80)
         return true
     }
@@ -410,204 +448,89 @@ window.addEventListener('DOMContentLoaded', () => {
 
     window.addEventListener('resize', fit)
 
-    /* ----------------------------------- life --------------------------------- */
-    // Every few seconds the cluster changes shape, one event at a time:
-    //   split     a big sphere shrinks away as two smaller ones grow out of it
-    //   merge     two small neighbours shrink into their midpoint as a bigger one grows there
-    //   swap      two spheres of different size trade sizes
-    //   replace   a sphere shrinks away where it is, a new one of the same size grows in at the
-    //             cluster's edge and is drawn in to nestle against the rest
-    //   photo     a sphere blurs out and back in with another picture
-    // Every event keeps the total area (a split's halves have the parent's area, a merge the
-    // sum), so the cluster stays the reference's size. After an event the resting layout is
-    // relaxed — pairs pushed apart to the gap, newcomers pulled in — and every sphere tweens
-    // from where it is to where it now belongs. The dodge rides on top the whole time.
+    /* ---------------------------------- resize -------------------------------- */
+    // Every few seconds the big sphere that has been big the longest trades sizes with a small
+    // one: it shrinks to the small one's diameter as that one grows to its, both where they are.
+    // Two spheres are big at any moment, and none stays big past its second trade.
+    // The resting layout is then relaxed — pairs pushed apart to the gap, the cluster re-centred
+    // — and every sphere tweens from where it is to where it now belongs, so the neighbours of
+    // the growing one make room. No picture ever changes, nothing arrives or leaves. The dodge
+    // rides on top the whole time and parts spheres that meet on the way.
 
-    const RELAX_PASSES = 60
-    const PULL_NEW = 0.03         // share of the way to the cluster centre a newcomer is drawn each pass
-    const PULL_ALL = 0.004        // …and everyone else, so the cluster stays packed as the reference is
-    const PULL_WIDE = 0.6         // the pull is weaker sideways, so the cluster stays wider than tall
-    const PHOTO_FADE = 0.45       // s a photo swap blurs out / in
+    const RELAX_PASSES = 120
+    const BOX_FIT = 0.25          // share of the way the layout is squeezed or stretched toward the
+                                  // reference's box each pass — the zone stays equally full
+    const FIT_UNTIL = 0.85        // share of the passes that fit; the rest only separate, so no overlap is left
 
-    let lifeTimer = 0
+    let resizeTimer = 0
     let morphing = false
     const rand = (a, b) => a + Math.random() * (b - a)
     const pick = (list) => list[Math.floor(Math.random() * list.length)]
 
-    function scheduleLife() {
-        clearTimeout(lifeTimer)
-        if (!config.life || reducedMotion.matches) return
-        const pause = rand(Math.min(config.lifeMin, config.lifeMax), Math.max(config.lifeMin, config.lifeMax))
-        lifeTimer = setTimeout(lifeEvent, Math.round(pause * 1000))
+    function scheduleResize() {
+        clearTimeout(resizeTimer)
+        if (!config.resize || reducedMotion.matches) return
+        const lo = Math.min(config.resizeMin, config.resizeMax), hi = Math.max(config.resizeMin, config.resizeMax)
+        resizeTimer = setTimeout(resizeEvent, Math.round(rand(lo, hi) * 1000))
     }
 
-    function lifeEvent() {
-        lifeTimer = 0
-        if (!config.life || introRunning || introPending || document.hidden) return scheduleLife()
-        const live = spheres.filter((s) => !s.leaving)
-        const count = live.length
-        const min = Math.min(config.minCount, config.maxCount)
-        const max = Math.max(config.minCount, config.maxCount)
-
-        // what could happen right now, weighted — a crowded cluster leans to merging, a sparse
-        // one to splitting, so the count drifts around the middle of its range
-        const options = []
-        const splitters = live.filter((s) => s.d >= config.splitMin && s.d / Math.SQRT2 >= config.minSize)
-        if (count < max && splitters.length) options.push({ w: 3 + (count <= min + 1 ? 3 : 0), run: () => split(pick(splitters)) })
-        const pairs = mergeable(live)
-        if (count > min && pairs.length) options.push({ w: 3 + (count >= max - 1 ? 3 : 0), run: () => merge(pick(pairs)) })
-        const unequal = unequalPairs(live)
-        if (unequal.length) options.push({ w: 2, run: () => swapSizes(pick(unequal)) })
-        if (count >= 2) options.push({ w: 2, run: () => replace(pick(live)) })
-        options.push({ w: 2, run: () => swapPhoto(pick(live)) })
-
-        let roll = Math.random() * options.reduce((sum, o) => sum + o.w, 0)
-        const chosen = options.find((o) => (roll -= o.w) < 0) || options[options.length - 1]
-        chosen.run()
+    function resizeEvent() {
+        resizeTimer = 0
+        if (!config.resize || introRunning || introPending || document.hidden) return scheduleResize()
+        const big = biggest()
+        const giver = big.slice().sort((a, b) => a.bigSince - b.bigSince)[0]   // big the longest
+        const partners = spheres.filter((s) => !big.includes(s) && tradeable(giver, s))
+        if (partners.length) trade([giver, pick(partners)])
         syncInfo()
-        scheduleLife()
+        scheduleResize()
     }
 
-    // small neighbours whose merged sphere would still fit the size cap
-    function mergeable(live) {
-        const out = []
-        for (let i = 0; i < live.length; i++) {
-            for (let j = i + 1; j < live.length; j++) {
-                const a = live[i], b = live[j]
-                const merged = Math.hypot(a.d, b.d)
-                if (merged > config.maxSize) continue
-                const near = Math.hypot(a.x - b.x, a.y - b.y) < (a.d + b.d) / 2 + 80
-                if (near) out.push([a, b])
-            }
-        }
-        return out
+    // sizes differ by the configured ratio, so a trade is visible but never absurd
+    function tradeable(a, b) {
+        const lo = Math.min(config.resizeMinRatio, config.resizeMaxRatio)
+        const hi = Math.max(config.resizeMinRatio, config.resizeMaxRatio)
+        const ratio = Math.max(a.d, b.d) / Math.min(a.d, b.d)
+        return ratio >= lo && ratio <= hi
     }
 
-    function unequalPairs(live) {
-        const out = []
-        for (let i = 0; i < live.length; i++) {
-            for (let j = i + 1; j < live.length; j++) {
-                const a = live[i], b = live[j]
-                const ratio = Math.max(a.d, b.d) / Math.min(a.d, b.d)
-                if (ratio >= 1.4 && ratio <= 3) out.push([a, b])
-            }
-        }
-        return out
-    }
-
-    /** An image for a sphere of this size — one nobody is showing, if there is one. */
-    function imageFor(d, avoid = []) {
-        const pool = d < SMALL_BELOW ? IMAGES_SMALL : IMAGES_LARGE
-        const shown = new Set(spheres.filter((s) => !s.leaving).map((s) => s.src).concat(avoid))
-        const fresh = pool.filter((src) => !shown.has(src))
-        return pick(fresh.length ? fresh : pool.filter((src) => !avoid.includes(src)).concat(pool))
-    }
-
-    function split(parent) {
-        const d = parent.d / Math.SQRT2                    // two of these have the parent's area
-        const angle = Math.random() * Math.PI * 2
-        const reach = parent.d * 0.36
-        const a = sphere(imageFor(d, [parent.src]), parent.x, parent.y, 0)
-        const b = sphere(imageFor(d, [parent.src, a.src]), parent.x, parent.y, 0)
-        const targets = new Map([
-            [a, { x: parent.x + Math.cos(angle) * reach, y: parent.y + Math.sin(angle) * reach, d }],
-            [b, { x: parent.x - Math.cos(angle) * reach, y: parent.y - Math.sin(angle) * reach, d }]
-        ])
-        parent.leaving = true
-        arrive(a); arrive(b)
-        startMorph(targets)
-    }
-
-    function merge([a, b]) {
-        const wa = a.d * a.d, wb = b.d * b.d
-        const x = (a.x * wa + b.x * wb) / (wa + wb)
-        const y = (a.y * wa + b.y * wb) / (wa + wb)
-        const d = Math.hypot(a.d, b.d)                     // the two areas summed
-        const c = sphere(imageFor(d, [a.src, b.src]), x, y, 0)
-        a.leaving = b.leaving = true
-        arrive(c)
-        startMorph(new Map([[c, { x, y, d }], [a, { x, y, d: 0 }], [b, { x, y, d: 0 }]]))
-    }
-
-    function swapSizes([a, b]) {
+    function trade([a, b]) {
         startMorph(new Map([[a, { x: a.x, y: a.y, d: b.d }], [b, { x: b.x, y: b.y, d: a.d }]]))
-        // a small sphere grown big takes a photo, a big one shrunk takes a small one's image
-        ;[[a, b.d], [b, a.d]].forEach(([s, d]) => {
-            if ((s.d < SMALL_BELOW) !== (d < SMALL_BELOW)) swapPhoto(s, d)
-        })
-    }
-
-    function replace(old) {
-        // the newcomer starts just outside the cluster, on a random side, and gets pulled in
-        const angle = Math.random() * Math.PI * 2
-        const box = bounds(spheres.filter((s) => !s.leaving))
-        const radius = Math.max(box.width, box.height) / 2 + old.d / 2
-        const fresh = sphere(imageFor(old.d, [old.src]),
-            CLUSTER.cx + Math.cos(angle) * radius, CLUSTER.cy + Math.sin(angle) * radius, 0)
-        old.leaving = true
-        arrive(fresh)
-        startMorph(new Map([[fresh, { x: fresh.x, y: fresh.y, d: old.d }]]), [fresh])
-    }
-
-    function swapPhoto(s, d = s.d) {
-        const src = imageFor(d, [s.src])
-        if (src === s.src) return
-        const el = s.el
-        el.style.setProperty('--intro-fade', PHOTO_FADE + 's')
-        el.style.setProperty('--intro-blur-fade', PHOTO_FADE + 's')
-        el.classList.add('is-arriving', 'is-veiled')
-        s.src = src
-        const swap = () => {
-            el.removeEventListener('transitionend', swap)
-            if (s.el !== el) return                          // re-rendered meanwhile — it shows the new photo already
-            s.img.src = src
-            const back = () => { el.removeEventListener('transitionend', back); el.classList.remove('is-arriving') }
-            el.addEventListener('transitionend', back)
-            el.classList.remove('is-veiled')
-        }
-        el.addEventListener('transitionend', swap)
-    }
-
-    /** A newcomer gets its element now, so it can grow from nothing. */
-    function arrive(s) {
-        spheres.push(s)
-        bubbles.appendChild(bubble(s))
-        place(s)
     }
 
     /**
      * Sets every sphere's new resting place and starts the tween there. `targets` holds the
      * changed ones (reference px); everyone else's target is where it is now. The lot is then
-     * relaxed: `pulled` spheres are drawn in toward the cluster centre, pairs pushed apart to
-     * the gap, leavers left out (they shrink where they are, or into their target) — and the
-     * cluster re-centred.
+     * relaxed — pairs pushed apart to the gap, the whole held to the reference's box — so the
+     * growing sphere's neighbours step away and the shrinking one's close in.
      */
-    function startMorph(targets, pulled = []) {
+    function startMorph(targets) {
         const now = performance.now()
-        const dur = config.morphDuration * 1000
-        const gap = config.gap / config.scale
-        const live = spheres.filter((s) => !s.leaving)
-        const points = live.map((s) => {
+        const dur = config.resizeDuration * 1000
+        const points = spheres.map((s) => {
             const t = targets.get(s)
-            return { s, x: t ? t.x : s.x, y: t ? t.y : s.y, r: (t ? t.d : s.d) / 2, pull: pulled.includes(s) ? PULL_NEW : PULL_ALL }
+            return { s, x: t ? t.x : s.x, y: t ? t.y : s.y, r: (t ? t.d : s.d) / 2 }
         })
-        relax(points, gap)
+        relax(points, config.gap / config.scale)
         points.forEach((p) => {
             p.s.tween = { from: { x: p.s.x, y: p.s.y, d: p.s.d }, to: { x: p.x, y: p.y, d: p.r * 2 }, t0: now, dur }
-        })
-        spheres.filter((s) => s.leaving).forEach((s) => {
-            const t = targets.get(s)
-            s.tween = { from: { x: s.x, y: s.y, d: s.d }, to: t || { x: s.x, y: s.y, d: 0 }, t0: now, dur }
         })
         morphing = true
         wake()
     }
 
-    function relax(points, gap) {
+    function relax(points, gap, fit = BOX_FIT) {
         for (let pass = 0; pass < RELAX_PASSES; pass++) {
-            for (const p of points) {
-                p.x += (CLUSTER.cx - p.x) * p.pull * PULL_WIDE
-                p.y += (CLUSTER.cy - p.y) * p.pull
+            // the last passes are separation only, so the fit never leaves an overlap
+            if (fit > 0 && pass < RELAX_PASSES * FIT_UNTIL) {
+                // squeeze or stretch the lot about its centre toward the reference's box — the
+                // separation right after then undoes whatever went too far
+                const box = bounds(points.map((p) => ({ x: p.x, y: p.y, d: p.r * 2 })))
+                const kx = 1 + (CLUSTER.width / box.width - 1) * fit
+                const ky = 1 + (CLUSTER.height / box.height - 1) * fit
+                for (const p of points) {
+                    p.x = box.cx + (p.x - box.cx) * kx
+                    p.y = box.cy + (p.y - box.cy) * ky
+                }
             }
             for (let i = 0; i < points.length; i++) {
                 for (let j = i + 1; j < points.length; j++) {
@@ -628,10 +551,10 @@ window.addEventListener('DOMContentLoaded', () => {
         points.forEach((p) => { p.x += CLUSTER.cx - box.cx; p.y += CLUSTER.cy - box.cy })
     }
 
-    /** Advances every tween; returns whether any is still running. Finished leavers go. */
+    /** Advances every tween; returns whether any is still running. */
     function stepMorph(now) {
         let active = false
-        for (const s of spheres.slice()) {
+        for (const s of spheres) {
             if (!s.tween) continue
             const { from, to, t0, dur } = s.tween
             const t = clamp((now - t0) / dur, 0, 1)
@@ -640,26 +563,23 @@ window.addEventListener('DOMContentLoaded', () => {
             s.y = from.y + (to.y - from.y) * e
             s.d = from.d + (to.d - from.d) * e
             place(s)
-            if (t < 1) { active = true; continue }
-            s.tween = null
-            if (s.leaving) {
-                s.el.remove()
-                spheres.splice(spheres.indexOf(s), 1)
-            }
+            if (t < 1) active = true
+            else s.tween = null
         }
+        if (active || morphing) updateActive()
         morphing = active
         return active
     }
 
     function cancelMorph() {
-        clearTimeout(lifeTimer)
-        lifeTimer = 0
-        // everything lands where it was going; leavers go now
-        spheres.slice().forEach((s) => {
+        clearTimeout(resizeTimer)
+        resizeTimer = 0
+        // everything lands where it was going
+        spheres.forEach((s) => {
             if (s.tween) { Object.assign(s, s.tween.to); s.tween = null }
-            if (s.leaving) spheres.splice(spheres.indexOf(s), 1)
         })
         morphing = false
+        if (spheres[0] && spheres[0].el) updateActive()
     }
 
     /* ---------------------------------- dodge --------------------------------- */
@@ -668,8 +588,8 @@ window.addEventListener('DOMContentLoaded', () => {
     // the cursor through its (current) centre, and eases back once the cursor has gone. Where
     // a sphere stepping aside would run into a neighbour, that one gets nudged along — so the
     // cluster parts around the cursor rather than piling up. Offsets live in `transform`, left
-    // free by the layout. A sphere mid-morph still dodges the cursor but sits out the nudging:
-    // its resting place is on the move, and two halves growing out of one spot overlap by design.
+    // free by the layout. A trade moves resting places under it; where two spheres meet on the
+    // way, the nudge parts them just the same.
 
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
     const pointer = { clientX: 0, clientY: 0, active: false }
@@ -785,19 +705,17 @@ window.addEventListener('DOMContentLoaded', () => {
                 : ''
         }
         // sleeps once everything has settled — at home, or held still under a resting cursor;
-        // the next pointermove or morph wakes it
+        // the next pointermove or trade wakes it
         if (moving) dodgeFrame = requestAnimationFrame(stepDodge)
     }
 
-    /** Push apart any two settled spheres that got closer than half the layout gap. */
+    /** Push apart any two spheres that got closer than half the layout gap. */
     function separate() {
         const minGap = config.gap * 0.5
         for (let i = 0; i < spheres.length; i++) {
             const a = spheres[i]
-            if (a.tween) continue
             for (let j = i + 1; j < spheres.length; j++) {
                 const b = spheres[j]
-                if (b.tween) continue
                 const min = a.sr + b.sr + minGap
                 const dx = (b.sx + b.ox) - (a.sx + a.ox)
                 const dy = (b.sy + b.oy) - (a.sy + a.oy)
@@ -908,7 +826,7 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 
     function syncInfo() {
-        const live = spheres.filter((s) => !s.leaving)
+        const live = spheres
         const sizes = live.map((s) => (s.tween ? s.tween.to.d : s.d) * config.scale)
         const box = bounds(live.map((s) => (s.tween ? s.tween.to : s)))
         const over = live.filter((s) => {
@@ -917,8 +835,8 @@ window.addEventListener('DOMContentLoaded', () => {
             const r = s.d * config.scale / 2
             return sx - r < 0 || sx + r > config.width || sy - r < 0 || sy + r > config.height
         }).length
-        // the sources are 200px: past that the browser is upscaling
-        const soft = sizes.filter((d) => d > 200).length
+        // the ic-* sources are 200px: past that the browser is upscaling
+        const soft = live.filter((s, i) => /ic-\d/.test(s.src) && sizes[i] > 200).length
         const warn = []
         if (over) warn.push(`${over} past the stage edge`)
         if (soft) warn.push(`${soft} larger than the 200px source`)
@@ -1039,8 +957,8 @@ window.addEventListener('DOMContentLoaded', () => {
     // orientation change — so measure it again on the next frame and once everything has loaded
     requestAnimationFrame(fit)
     window.addEventListener('load', fit)
-    // a tab coming back from the background picks life up again
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) { wake(); scheduleLife() } })
+    // a tab coming back from the background picks the trades up again
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) { wake(); scheduleResize() } })
 
     // the state is plain data — exposed for debugging
     window.consHero = {
@@ -1050,7 +968,7 @@ window.addEventListener('DOMContentLoaded', () => {
         get dodging() { return dodgeFrame !== 0 },   // is the frame loop awake
         get morphing() { return morphing },
         intro: replayIntro,
-        life: lifeEvent,     // fire the next change now
+        resize: resizeEvent, // fire the next trade now
         step: stepDodge,     // advance the frame loop by hand (a background tab gets no frames)
         render
     }
