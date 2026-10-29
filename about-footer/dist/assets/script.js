@@ -2,29 +2,42 @@
    Sphere effect (ported from mwg_099) + live config panel
    ========================================================================== */
 
-const IMAGES = [
-    'assets/v-1.png', 'assets/v-2.png', 'assets/v-3.png',
-    'assets/v-4.png', 'assets/v-5.png', 'assets/v-6.png',
-    'assets/v-7.png', 'assets/v-8.png', 'assets/v-9.png'
+// The team, built as cards from markup rather than baked into an image: tag, 4:3 photo, name
+// and role. { photo, name, role? } — the copy comes from the team list (spysok.txt).
+const TEAM_TAG = 'Команда'
+const TEAM = [
+    { photo: 'assets/team/slava-kushakov.webp', name: 'Слава Кушаков', role: 'Співзасновник Альянсу громадського здоров’я' },
+    { photo: 'assets/team/iryna-trush.webp', name: 'Ірина Труш', role: 'Асистентка проєкту' },
+    { photo: 'assets/team/anastasiia-kapitonenko.webp', name: 'Анастасія Капітоненко', role: 'Координаторка напряму по mental health' },
+    { photo: 'assets/team/kateryna-kyrylenko.webp', name: 'Катерина Кириленко', role: 'Менеджерка з ведення Instagram' },
+    { photo: 'assets/team/oleksandra-verlynska.webp', name: 'Олександра Верлинська', role: 'Координаторка програми ментального здоров’я для молоді' },
+    { photo: 'assets/team/yuliia-panchenko.webp', name: 'Юлія Панченко', role: 'Редакторка сайту' },
+    { photo: 'assets/team/olia-kuno.webp', name: 'Оля Куно', role: 'Координаторка освітнього напряму' },
+    { photo: 'assets/team/tetiana-sokolovska.webp', name: 'Тетяна Соколовська' },   // no role in the list yet
+    { photo: 'assets/team/svitlana-viedienieieva.webp', name: 'Світлана Вєдєнєєва', role: 'Старша програмна фахівчиня' },
+    { photo: 'assets/team/marharyta-shvirin.webp', name: 'Маргарита Швірінь', role: 'Координаторка проєкту' },
+    // no photo in the team folder — cropped from the old baked card (v-4)
+    { photo: 'assets/team/halia-serhiienko.webp', name: 'Галя Сергієнко', role: 'Керівниця команди' },
+    { photo: 'assets/team/nina-demchenko.webp', name: 'Ніна Демченко', role: 'Дизайнерка' }
 ]
 
 // Mirrors DEFAULTS in drugstore-frontend (src/components/AboutPage/AboutFooter), so a tweak
-// made here means the same thing once it is carried over. shuffle, objectFit, logoInSphere
-// and autoRotate exist only for the panel — the component has them fixed.
+// made here means the same thing once it is carried over. shuffle, logoInSphere, autoRotate
+// and theme exist only for the panel — the component has them fixed (theme comes from the
+// site's own switch). Ahead of the frontend: stretchX and mediaSize, retuned for the twelve
+// team cards — smaller cards on a wider sphere, so they overlap less.
 const DEFAULT_CONFIG = {
     // sphere
     radiusFactor: 0.18,
     radiusOffset: 100,
     perspective: 130,
-    stretchX: 1.65,          // > 1 widens the sphere into an ellipsoid
+    stretchX: 1.8,           // > 1 widens the sphere into an ellipsoid (frontend: 1.65)
     stretchY: 0.9,
     shuffle: false,
     // medias
-    mediaSize: 15,
-    objectFit: 'contain',
+    mediaSize: 12.5,         // vw (frontend: 15)
     depthOpacity: 0.35,
     depthBlur: 4.5,          // px of blur at the very back, easing to 0 at the front
-    backdropBlur: 35,        // blur behind each photo, masked to the photo's own shape
     // acceleration — input steers along ONE axis, the drift's own: with the tumble it adds
     // speed, against it the sphere slows and, past the base rate, turns over. It always
     // coasts back to the drift.
@@ -36,6 +49,8 @@ const DEFAULT_CONFIG = {
     boostDecay: 0.94,        // per-frame fade once the input stops
     // logo
     logoInSphere: true,      // front medias cross over the logo instead of always passing behind
+    // theme — flips the cards, the logo and the border
+    theme: 'dark',
     // auto rotation. A constant pair of rates always composes into ONE fixed axis,
     // which leaves the medias nearest that axis stuck at the rim, never facing front.
     // Breathing the horizontal rate keeps tilting the axis so every media comes round.
@@ -68,10 +83,8 @@ const SCHEMA = [
         title: 'Medias',
         fields: [
             { key: 'mediaSize', label: 'Media size (vw)', type: 'range', min: 3, max: 30, step: 0.5 },
-            { key: 'objectFit', label: 'Object fit', type: 'select', options: ['contain', 'cover', 'fill', 'scale-down'] },
             { key: 'depthOpacity', label: 'Depth fade', type: 'range', min: 0, max: 1, step: 0.01 },
-            { key: 'depthBlur', label: 'Depth blur (px)', type: 'range', min: 0, max: 12, step: 0.5 },
-            { key: 'backdropBlur', label: 'Backdrop blur (px)', type: 'range', min: 0, max: 40, step: 0.5 }
+            { key: 'depthBlur', label: 'Depth blur (px)', type: 'range', min: 0, max: 12, step: 0.5 }
         ]
     },
     {
@@ -101,6 +114,12 @@ const SCHEMA = [
         ]
     },
     {
+        title: 'Theme',
+        fields: [
+            { key: 'theme', label: 'Theme', type: 'select', options: ['dark', 'light'] }
+        ]
+    },
+    {
         title: 'Mobile (\u2264 768px)',
         fields: [
             { key: 'mobileMediaSize', label: 'Media size (vw)', type: 'range', min: 4, max: 40, step: 0.5 },
@@ -112,12 +131,9 @@ const SCHEMA = [
     }
 ]
 
-// mask-size has to track object-fit so the blur lands exactly under the artwork
-const MASK_SIZE = { contain: 'contain', cover: 'cover', fill: '100% 100%', 'scale-down': 'contain' }
-
-// bumped when the defaults were synced from the frontend, so an older session's tweaks
-// can't come back up over them
-const STORAGE_KEY = 'sphere-effect-config-v2'
+// bumped whenever the defaults change, so an older session's tweaks can't come back up
+// over them
+const STORAGE_KEY = 'sphere-effect-config-v4'
 
 window.addEventListener('DOMContentLoaded', () => {
 
@@ -130,7 +146,8 @@ window.addEventListener('DOMContentLoaded', () => {
     const config = loadConfig()
 
     let medias = []
-    let arts = []       // the image inside each media — where the depth cues are written
+    let cards = []      // the card inside each media — carries --fade for the tag's glass
+    let arts = []       // per card, the tag's label and the body — where the depth cues are written
     let zOrder = []     // paint order each media was last given within its plane
     let positions = []
     let radius = 0, radiusX = 0, radiusY = 0
@@ -139,9 +156,53 @@ window.addEventListener('DOMContentLoaded', () => {
 
     const goldenAngle = Math.PI * (3 - Math.sqrt(5))
 
+    function createImg(className, src) {
+        const img = document.createElement('img')
+        img.className = className
+        img.src = src
+        img.alt = ''
+        img.draggable = false
+        img.decoding = 'async'
+        return img
+    }
+
+    function createText(className, text) {
+        const el = document.createElement('p')
+        el.className = className
+        el.textContent = text
+        return el
+    }
+
+    /** A team member as markup: the tag, the photo, then the name over the role. */
+    function buildCard(person) {
+        const card = document.createElement('article')
+        card.className = 'team-card'
+
+        // The tag is real glass, so nothing at or above it may carry opacity or filter: either
+        // makes that element the backdrop root, and the blur would sample nothing. The depth
+        // cues go to the label inside it and to the body beside it; the plate fades by --fade.
+        const tag = document.createElement('span')
+        tag.className = 'team-card__tag'
+        const label = document.createElement('span')
+        label.className = 'team-card__label'
+        label.textContent = TEAM_TAG
+        tag.appendChild(label)
+
+        const body = document.createElement('div')
+        body.className = 'team-card__body'
+        body.append(
+            createImg('team-card__photo', person.photo),
+            createText('team-card__name', person.name)
+        )
+        if (person.role) body.appendChild(createText('team-card__role', person.role))
+
+        card.append(tag, body)
+        return card
+    }
+
     function buildSphere() {
         medias.forEach((m) => m.remove())
-        const order = IMAGES.map((src, i) => i)
+        const order = TEAM.map((person, i) => i)
         if (config.shuffle) {
             for (let i = order.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1))
@@ -151,29 +212,15 @@ window.addEventListener('DOMContentLoaded', () => {
 
         const frag = document.createDocumentFragment()
         order.forEach((index) => {
-            const src = IMAGES[index]
-
             const wrap = document.createElement('div')
             wrap.className = 'media'
-            // resolve against the document: a url() in a custom property is otherwise
-            // resolved relative to the stylesheet, which sits one folder deeper
-            wrap.style.setProperty('--mask', `url("${new URL(src, location.href).href}")`)
-
-            const backdrop = document.createElement('div')
-            backdrop.className = 'media__backdrop'
-
-            const img = document.createElement('img')
-            img.className = 'media__img'
-            img.src = src
-            img.alt = ''
-            img.draggable = false
-
-            wrap.append(backdrop, img)
+            wrap.appendChild(buildCard(TEAM[index]))
             frag.appendChild(wrap)
         })
         sphereBack.appendChild(frag)
         medias = Array.from(sphereBack.querySelectorAll('.media'))
-        arts = medias.map((media) => media.querySelector('.media__img'))
+        cards = medias.map((media) => media.querySelector('.team-card'))
+        arts = cards.map((card) => [...card.querySelectorAll('.team-card__label, .team-card__body')])
         zOrder = medias.map(() => -1)
 
         // Initial positions on the sphere (Fibonacci spiral)
@@ -200,13 +247,13 @@ window.addEventListener('DOMContentLoaded', () => {
         const spreadY = mobile ? config.mobileStretchY : config.stretchY
 
         root.style.setProperty('--media-size', size + 'vw')
-        root.style.setProperty('--media-fit', config.objectFit)
-        root.style.setProperty('--mask-size', MASK_SIZE[config.objectFit] || 'contain')
-        root.style.setProperty('--backdrop-blur', config.backdropBlur + 'px')
+        root.style.setProperty('--perspective', persp + 'vw')
         radius = factor * window.innerWidth + config.radiusOffset
         radiusX = radius * spreadX
         radiusY = radius * spreadY
-        gsap.set([sphereBack, sphereFront], { perspective: persp + 'vw' })
+
+        // the cards are markup, so the theme is CSS's alone
+        document.body.classList.toggle('theme--light', config.theme === 'light')
     }
 
     /* -------------------------------- rotation -------------------------------- */
@@ -311,22 +358,24 @@ window.addEventListener('DOMContentLoaded', () => {
                 media.style.zIndex = order
             }
 
-            // depth cues: z is -1 (back) → 1 (front). Written to the image, never the media:
-            // opacity or filter on the media makes it the backdrop root, and the masked blur
-            // behind the photo would sample nothing.
+            // depth cues: z is -1 (back) → 1 (front). Written inside the card, so the media only
+            // ever carries its transform and the tag keeps a backdrop to blur.
             const depth = (z + 1) / 2
-            const art = arts[i]
-            art.style.opacity = 1 - config.depthOpacity * (1 - depth)
-            art.style.filter = config.depthBlur
+            const fade = 1 - config.depthOpacity * (1 - depth)
+            const blur = config.depthBlur
                 ? `blur(${(config.depthBlur * (1 - depth)).toFixed(2)}px)`
                 : ''
+            for (const art of arts[i]) {
+                art.style.opacity = fade
+                art.style.filter = blur
+            }
+            cards[i].style.setProperty('--fade', fade.toFixed(3))
         }
     }
 
     /* ------------------------------- interaction ------------------------------ */
 
-    let isTouch = false
-    gsap.matchMedia().add('(hover: none)', () => { isTouch = true })
+    const isTouch = window.matchMedia('(hover: none)').matches
 
     Observer.create({
         target: root,
@@ -371,7 +420,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
     /* ---------------------------------- ticker -------------------------------- */
 
-    gsap.ticker.add((time, deltaTime) => {
+    function tick(time, deltaTime) {
         const f = deltaTime / (1000 / 60)   // frames elapsed at 60fps
 
         boost *= Math.pow(config.boostDecay, f)
@@ -387,12 +436,56 @@ window.addEventListener('DOMContentLoaded', () => {
         aimTravel(spin)
 
         updateMedias()
+    }
+
+    let running = false
+
+    /**
+     * Each media is a promoted layer; off screen they are held for nothing, so the promotion
+     * follows the tumble. Split the way the depth cues are: the media moves, the label and
+     * body inside it fade and blur.
+     */
+    function promote(on) {
+        medias.forEach((el) => { el.style.willChange = on ? 'transform' : 'auto' })
+        arts.flat().forEach((el) => { el.style.willChange = on ? 'filter, opacity' : 'auto' })
+    }
+
+    function play() {
+        if (running) return
+        promote(true)
+        gsap.ticker.add(tick)
+        running = true
+    }
+
+    function pause() {
+        if (!running) return
+        gsap.ticker.remove(tick)
+        promote(false)
+        running = false
+    }
+
+    // fresh medias come up unpromoted, so carry the promotion over if the sphere is spinning
+    function rebuild() {
+        buildSphere()
+        if (running) promote(true)
+    }
+
+    // Spin only while the section is on screen — and never under reduced motion, where the
+    // sphere is laid out once and held still.
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
+    let visible = false
+    const syncMotion = () => (visible && !reducedMotion.matches ? play() : pause())
+
+    new IntersectionObserver(([entry]) => {
+        visible = entry.isIntersecting
+        syncMotion()
+    }, { threshold: 0 }).observe(root)
+    reducedMotion.addEventListener('change', syncMotion)
+
+    window.addEventListener('resize', () => {
+        applyStyles()
+        updateMedias()
     })
-
-    window.addEventListener('resize', applyStyles)
-
-    // to prevent safari perspective bug
-    gsap.set([sphereBack, sphereFront], { transformStyle: 'flat' })
 
     /* ------------------------------- config panel ----------------------------- */
 
@@ -449,8 +542,10 @@ window.addEventListener('DOMContentLoaded', () => {
                 if (field.type === 'range') {
                     row.querySelector('output').textContent = formatValue(config[field.key], field)
                 }
-                if (field.rebuild) buildSphere()
+                if (field.rebuild) rebuild()
                 applyStyles()
+                // repaint now — the ticker is off while paused or under reduced motion
+                updateMedias()
                 syncOutput()
                 saveConfig()
             })
@@ -518,9 +613,10 @@ window.addEventListener('DOMContentLoaded', () => {
         Object.assign(config, DEFAULT_CONFIG)
         try { localStorage.removeItem(STORAGE_KEY) } catch (e) {}
         syncInputs()
-        buildSphere()
+        rebuild()
         boost = 0
         applyStyles()
+        updateMedias()
         syncOutput()
     })
 

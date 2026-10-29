@@ -14,10 +14,32 @@
     --panel-text: rgba(255, 255, 255, 0.92);
     --panel-muted: rgba(255, 255, 255, 0.45);
     --panel-accent: #00c853;
+
+    /* the site's dark theme tokens: --c-bg, --w-30-full, --w-60 */
+    --page-bg: #000;
+    --page-border: #333;
+    --page-hint: rgba(255, 255, 255, 0.6);
+    /* team card: --c-fg, --w-40, and --glass-bg (#ffffff26) split into channels and alpha,
+       so the tag's plate can fade with depth */
+    --card-fg: #fff;
+    --card-muted: rgba(255, 255, 255, 0.4);
+    --card-tag-rgb: 255 255 255;
+    --card-tag-alpha: 0.15;
+}
+
+/* light theme — switched from the panel, the site has its own toggle */
+body.theme--light {
+    --page-bg: #fff;
+    --page-border: #ccc;
+    --page-hint: rgba(0, 0, 0, 0.6);
+    --card-fg: #000;
+    --card-muted: rgba(0, 0, 0, 0.4);
+    --card-tag-rgb: 0 0 0;
+    --card-tag-alpha: 0.314;   /* #00000050 */
 }
 
 body {
-    background: #000;
+    background: var(--page-bg);
     font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
 }
 
@@ -38,26 +60,33 @@ body:has(.sphere-effect) {
     height: 100svh;
     display: grid;
     place-items: center;
-    color: rgba(255, 255, 255, 0.6);
+    color: var(--page-hint);
     font-size: 12px;
     letter-spacing: 0.14em;
     text-transform: uppercase;
 }
 
 /* ----------------------------------- SPHERE ----------------------------------- */
+/* the engine writes transform / opacity / filter every frame, so nothing here transitions */
 .sphere-effect {
     position: relative;   /* containing block for the medias */
-    background: #000;
+    background: var(--page-bg);
     width: 100%;
     height: 100dvh;
-    border-top: 1px solid #333;
-    border-bottom: 1px solid #333;
+    /* the page's last section, as on the about page — so a top border only */
+    border-top: 1px solid var(--page-border);
     user-select: none;
     -webkit-user-select: none;
     display: flex;
     justify-content: center;
     align-items: center;
     overflow: hidden;
+    /* the sphere is dragged: grab at rest, grabbing while held — the site's idiom (DepthSlider) */
+    cursor: grab;
+}
+
+.sphere-effect:active {
+    cursor: grabbing;
 }
 
 .sphere-effect .sphere-container {
@@ -74,6 +103,8 @@ body:has(.sphere-effect) {
 .sphere-effect .sphere {
     position: absolute;
     inset: 0;
+    perspective: var(--perspective, 130vw);
+    transform-style: flat;   /* guards the Safari perspective bug */
 }
 
 /* the logo sits at z-index 2, between these two planes */
@@ -85,66 +116,114 @@ body:has(.sphere-effect) {
     position: absolute;
     left: 50%;
     top: 50%;
-    width: 121px;
-    height: 100.14px;
-    margin-left: -60.5px;
-    margin-top: -50.07px;
-    object-fit: contain;
     z-index: 2;
+    width: 121px;
+    height: auto;
+    transform: translate(-50%, -50%);
+    object-fit: contain;
     pointer-events: none;
     user-select: none;
     -webkit-user-select: none;
     -webkit-user-drag: none;
 }
 
+/* static white artwork, so it needs flipping when the poles do */
+body.theme--light .sphere-effect .sphere-logo {
+    filter: invert(1);
+}
 
 .sphere-effect .media {
     position: absolute;
-    width: var(--media-size, 10vw);
-    height: var(--media-size, 10vw);
-    transform-style: preserve-3d;
     left: 50%;
     top: 50%;
-    margin-left: calc(var(--media-size, 10vw) / -2);
-    margin-top: calc(var(--media-size, 10vw) / -2);
-    /* no border-radius — medias carry their own shape */
-    border-radius: 0;
-    /* transform only — will-change: opacity would make the media the backdrop root */
-    will-change: transform;
+    width: var(--media-size, 15vw);
+    height: var(--media-size, 15vw);
+    margin-left: calc(var(--media-size, 15vw) / -2);
+    margin-top: calc(var(--media-size, 15vw) / -2);
+    /* the card runs a little taller than the square box, so the box centres it */
+    display: flex;
+    align-items: center;
+    /* Flat, not preserve-3d: nothing inside is 3D — the media is placed by the plane's
+       perspective — and a 3D context here cuts the tag's glass off from what is behind it */
+    transform-style: flat;
+    pointer-events: none;
     user-select: none;
     -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    pointer-events: none;
+    /* no opacity or will-change here: the depth cues land inside the card, and the
+       promotion is the script's — only while it spins */
 }
 
-.sphere-effect .media__img {
-    display: block;
-    position: relative;   /* paint above the absolutely-positioned backdrop */
-    z-index: 1;
+/* --------------------------------- TEAM CARD ---------------------------------- */
+/* Markup rather than a baked image. Measured off the old baked card — a 246px-wide design
+   exported at 1.5× — so every size is design px × --u, which scales the card with the box. */
+
+.sphere-effect .team-card {
+    --u: calc(var(--media-size, 15vw) / 246);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
     width: 100%;
-    height: 100%;
-    object-fit: var(--media-fit, contain);
-    -webkit-user-drag: none;
-    will-change: filter, opacity;   /* the depth cues land here, not on the media */
+    font-family: Arial, sans-serif;
+    font-weight: 400;
+    color: var(--card-fg);
+    /* no opacity or filter here or on the tag — see the glass below */
 }
 
-/* The photos are PNGs with transparent surrounds, so a plain backdrop-filter would
-   blur a visible rectangle. Masking this layer with the very same image confines the
-   blur to the pixels the photo actually paints. */
-.sphere-effect .media__backdrop {
-    position: absolute;
-    inset: 0;
-    backdrop-filter: blur(var(--backdrop-blur, 0px));
-    -webkit-backdrop-filter: blur(var(--backdrop-blur, 0px));
-    -webkit-mask-image: var(--mask);
-            mask-image: var(--mask);
-    -webkit-mask-size: var(--mask-size, contain);
-            mask-size: var(--mask-size, contain);
-    -webkit-mask-position: center;
-            mask-position: center;
-    -webkit-mask-repeat: no-repeat;
-            mask-repeat: no-repeat;
+/* The depth cues land on these two. The script writes the real value on its first frame;
+   until then the sphere has no positions, so nothing flashes stacked in the centre. */
+.sphere-effect .team-card__label,
+.sphere-effect .team-card__body {
+    opacity: 0;
+}
+
+/* Real glass, the site's `glass-pill` — so the blur has to sample what is behind it, and
+   opacity or filter at or above it would make it sample nothing. It fades with depth
+   through --fade instead, which the script writes on the card (0 until the first frame). */
+.sphere-effect .team-card__tag {
+    padding: calc(5 * var(--u)) calc(8 * var(--u));
+    border-radius: calc(12 * var(--u));
+    background: rgb(var(--card-tag-rgb) / calc(var(--card-tag-alpha) * var(--fade, 0)));
+    backdrop-filter: blur(calc(20 * var(--u) * var(--fade, 0)));
+    -webkit-backdrop-filter: blur(calc(20 * var(--u) * var(--fade, 0)));
+    color: #fff;   /* white on the tag in both themes */
+    font-size: calc(14 * var(--u));
+    line-height: 1;
+}
+
+.sphere-effect .team-card__label {
+    display: block;
+}
+
+.sphere-effect .team-card__body {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+}
+
+.sphere-effect .team-card__photo {
+    display: block;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    margin-top: calc(12 * var(--u));
+    border-radius: calc(9 * var(--u));
+    object-fit: cover;
+    -webkit-user-drag: none;
+}
+
+.sphere-effect .team-card__name,
+.sphere-effect .team-card__role {
+    font-size: calc(16 * var(--u));
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+}
+
+.sphere-effect .team-card__name {
+    margin-top: calc(10 * var(--u));
+}
+
+.sphere-effect .team-card__role {
+    color: var(--card-muted);
 }
 
 /* ------------------------------- CONFIG PANEL --------------------------------- */
